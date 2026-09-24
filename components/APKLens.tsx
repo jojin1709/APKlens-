@@ -180,12 +180,12 @@ function CodeView({analysis, apkFile}:{analysis:APKAnalysis, apkFile: File | nul
   const [classFilter, setClassFilter] = useState("");
   const [backendUrl, setBackendUrl] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("apklens_backend_url") || "";
+      return localStorage.getItem("apklens_backend_url") || "https://apklens.onrender.com";
     }
-    return "";
+    return "https://apklens.onrender.com";
   });
   const [showConfig, setShowConfig] = useState(false);
-  const [urlInput, setUrlInput] = useState(backendUrl);
+  const [urlInput, setUrlInput] = useState(backendUrl || "https://apklens.onrender.com");
   const [statusMsg, setStatusMsg] = useState("");
   const [loadingClass, setLoadingClass] = useState<string | null>(null);
   const [activeCode, setActiveCode] = useState<{ className: string; code: string } | null>(null);
