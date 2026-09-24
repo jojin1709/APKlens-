@@ -1,6 +1,8 @@
 import type { APKCertificate } from "@/lib/apk-signer";
+import type { NativeLibraryInfo } from "@/lib/elf-parser";
+import type { SecretFinding } from "@/lib/secret-scanner";
 
-export type { APKCertificate };
+export type { APKCertificate, NativeLibraryInfo, SecretFinding };
 
 export type APKFile = {
   path: string;
@@ -28,15 +30,23 @@ export type APKAnalysis = {
   domains: string[];
   webViews: string[];
   technologies: string[];
-  dexFiles: { path: string; size: number; strings: number; classCount?: number; methodCount?: number; classes?: string[] }[];
-  nativeLibraries: { path: string; size: number }[];
+  dexFiles: {
+    path: string;
+    size: number;
+    strings: number;
+    classCount?: number;
+    methodCount?: number;
+    classes?: string[];
+  }[];
+  nativeLibraries: NativeLibraryInfo[];
+  secrets: SecretFinding[];
   resources: string[];
   assets: string[];
   manifestXml: string | null;
   certificate: APKCertificate | null;
   files: APKFile[];
   findings: {
-    severity: "high" | "medium" | "low" | "info";
+    severity: "critical" | "high" | "medium" | "low" | "info";
     title: string;
     evidence: string;
   }[];

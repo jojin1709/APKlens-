@@ -1,5 +1,9 @@
 FROM eclipse-temurin:21-jdk-alpine
 
+# Set Java memory constraints for Render free tier (512MB RAM total)
+ENV JAVA_TOOL_OPTIONS="-Xmx350m -XX:+UseSerialGC"
+ENV JADX_OPTS="-Xmx350m"
+
 # Install system tools, Python 3, and curl
 RUN apk add --no-cache python3 py3-pip py3-virtualenv bash curl wget unzip
 

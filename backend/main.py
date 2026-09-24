@@ -8,7 +8,7 @@ from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-app = FastAPI(title="APKLens JADX Decompiler API", version="1.0.0")
+app = FastAPI(title="APKLens JADX Decompiler API", version="2.0.0")
 
 # Enable CORS for APKLens web app on Vercel & localhost
 app.add_middleware(
@@ -23,6 +23,7 @@ app.add_middleware(
 def root():
     return {
         "service": "APKLens JADX Engine",
+        "version": "2.0.0",
         "status": "online",
         "docs": "/docs",
         "health": "/health"
@@ -32,7 +33,7 @@ def root():
 def health_check():
     jadx_version = "unknown"
     try:
-        res = subprocess.run(["jadx", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        res = subprocess.run(["jadx", "--version"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
         jadx_version = res.stdout.strip()
     except Exception as e:
         jadx_version = f"Error: {e}"
@@ -43,6 +44,14 @@ def health_check():
         "jadx": jadx_version,
     }
 
+@app.get("/api/decompile-class")
+def decompile_class_info():
+    return {
+        "status": "ready",
+        "service": "APKLens JADX Engine",
+        "usage": "Send a POST request with multipart/form-data containing 'file' and 'className'"
+    }
+
 @app.post("/api/decompile-class")
 async def decompile_class(
     file: UploadFile = File(...),
@@ -50,56 +59,78 @@ async def decompile_class(
 ):
     """
     Decompile a single target class from uploaded classes.dex or .apk file.
-    Fast and low memory footprint.
+    Ultra-fast single-threaded compilation with memory bounds.
     """
     temp_dir = tempfile.mkdtemp(prefix="apklens_jadx_")
     try:
+        # Normalize class name: e.g. "Lcom/android/insecurebankv2/PostLogin;" -> "com.android.insecurebankv2.PostLogin"
+        clean_class = className.strip().lstrip("L").rstrip(";").replace("/", ".")
         input_filename = file.filename or "classes.dex"
         input_path = os.path.join(temp_dir, input_filename)
+        
         with open(input_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
 
         target_file = os.path.join(temp_dir, "decompiled.java")
-        cmd = ["jadx", "--no-res", "--single-class", className, "--single-class-output", target_file, input_path]
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
+        
+        # Primary strategy: direct single-class extraction to target file
+        cmd = [
+            "jadx",
+            "--no-res",
+            "--no-imports",
+            "-j", "1",
+            "--single-class", clean_class,
+            "--single-class-output", target_file,
+            input_path
+        ]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=50)
 
         found_code = None
         if os.path.exists(target_file) and os.path.getsize(target_file) > 0:
             with open(target_file, "r", encoding="utf-8", errors="replace") as f:
                 found_code = f.read()
 
+        # Secondary strategy: single-class into isolated directory
         if not found_code:
-            out_dir = os.path.join(temp_dir, "decompiled")
+            out_dir = os.path.join(temp_dir, "out")
             os.makedirs(out_dir, exist_ok=True)
-            fallback_cmd = ["jadx", "--no-res", "-d", out_dir, input_path]
-            res = subprocess.run(fallback_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=90)
+            cmd2 = [
+                "jadx",
+                "--no-res",
+                "-j", "1",
+                "--single-class", clean_class,
+                "-d", out_dir,
+                input_path
+            ]
+            res = subprocess.run(cmd2, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=50)
 
             sources_dir = os.path.join(out_dir, "sources")
-            target_basename = className.split(".")[-1] + ".java"
-            for root, _, files in os.walk(sources_dir):
-                if target_basename in files:
-                    with open(os.path.join(root, target_basename), "r", encoding="utf-8", errors="replace") as f:
-                        found_code = f.read()
-                        break
+            target_basename = clean_class.split(".")[-1] + ".java"
+            if os.path.exists(sources_dir):
+                for root, _, files in os.walk(sources_dir):
+                    if target_basename in files:
+                        with open(os.path.join(root, target_basename), "r", encoding="utf-8", errors="replace") as f:
+                            found_code = f.read()
+                            break
 
         if not found_code:
             return JSONResponse(
                 status_code=404,
                 content={
-                    "error": f"Class {className} could not be decompiled or located.",
-                    "jadx_output": res.stdout,
+                    "error": f"Class '{clean_class}' could not be decompiled or was not found in the uploaded binary.",
+                    "jadx_stdout": res.stdout,
                     "jadx_stderr": res.stderr
                 }
             )
 
         return {
-            "className": className,
+            "className": clean_class,
             "code": found_code,
             "status": "success"
         }
 
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="Decompilation timed out.")
+        raise HTTPException(status_code=504, detail="Decompilation timed out under container resource constraints.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -123,8 +154,8 @@ async def decompile_all(
         out_dir = os.path.join(temp_dir, "decompiled")
         os.makedirs(out_dir, exist_ok=True)
 
-        cmd = ["jadx", "--no-res", "-d", out_dir, input_path]
-        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=120)
+        cmd = ["jadx", "--no-res", "-j", "1", "-d", out_dir, input_path]
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=90)
 
         sources_dir = os.path.join(out_dir, "sources")
         decompiled_files = []
@@ -140,7 +171,8 @@ async def decompile_all(
                         decompiled_files.append({
                             "path": rel_path,
                             "name": f,
-                            "code": code_snippet
+                            "code": code_snippet,
+                            "size": len(code_snippet)
                         })
                         if len(decompiled_files) >= (maxFiles or 50):
                             break
@@ -148,11 +180,13 @@ async def decompile_all(
                     break
 
         return {
-            "totalReturned": len(decompiled_files),
-            "files": decompiled_files,
-            "status": "success"
+            "status": "success",
+            "totalDecompiled": len(decompiled_files),
+            "files": decompiled_files
         }
 
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Decompilation timed out.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

@@ -3,6 +3,11 @@ import type { APKAnalysis, APKFile } from "@/types/apk";
 import { decodeAxml, isBinaryAxml, type DecodedManifest } from "@/lib/axml-parser";
 import { parseV1Signature, parseV2V3Signature, type APKCertificate } from "@/lib/apk-signer";
 import { parseDex } from "@/lib/dex-parser";
+import { scanForSecrets, type SecretFinding } from "@/lib/secret-scanner";
+import { parseElf, type NativeLibraryInfo } from "@/lib/elf-parser";
+
+// Cache for extracted DEX file blobs to enable ultra-fast single-class decompilation
+export const dexBlobCache = new Map<string, Blob>();
 
 function sha256(buffer: ArrayBuffer): Promise<string> {
   return crypto.subtle.digest("SHA-256", buffer).then((hash) =>
@@ -17,7 +22,7 @@ function decodeBytes(bytes: Uint8Array): string {
 function extractStrings(bytes: Uint8Array): string[] {
   const text = decodeBytes(bytes);
   const matches = text.match(/[ -~]{4,}/g) || [];
-  return [...new Set(matches)].slice(0, 20000);
+  return [...new Set(matches)].slice(0, 25000);
 }
 
 function unique<T>(items: T[]): T[] {
@@ -79,13 +84,14 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
   const files: APKFile[] = [];
   const resources: string[] = [];
   const assets: string[] = [];
-  const nativeLibraries: { path: string; size: number }[] = [];
+  const nativeLibraries: NativeLibraryInfo[] = [];
   const dexFiles: APKAnalysis["dexFiles"] = [];
   let manifestXml: string | null = null;
   let decodedManifest: DecodedManifest | null = null;
   const urls: string[] = [];
   const webViews: string[] = [];
   const technologies = new Set<string>();
+  const allCollectedStrings: string[] = [];
 
   const names = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
   for (const path of names) {
@@ -113,11 +119,20 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
         }
       }
     }
+    
     if (path.startsWith("res/")) resources.push(path);
     if (path.startsWith("assets/")) assets.push(path);
-    if (path.startsWith("lib/") && path.endsWith(".so")) nativeLibraries.push({ path, size: bytes.byteLength });
+    
+    // Parse ELF native libraries (.so)
+    if (path.startsWith("lib/") && path.endsWith(".so")) {
+      const elfInfo = parseElf(bytes, path);
+      nativeLibraries.push(elfInfo);
+    }
+
+    // Parse Dalvik Executable (DEX) bytecode
     if (/^classes\d*\.dex$/.test(path)) {
       const strings = extractStrings(bytes);
+      allCollectedStrings.push(...strings);
       const dexData = parseDex(bytes, path);
       dexFiles.push({
         path,
@@ -127,6 +142,16 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
         methodCount: dexData.methodCount,
         classes: dexData.classes
       });
+
+      // Cache DEX blob for fast on-demand decompilation without uploading entire APK
+      try {
+        const dexBlob = new Blob([bytes as unknown as BlobPart], { type: "application/octet-stream" });
+        dexBlobCache.set(`${hash}:${path}`, dexBlob);
+        dexBlobCache.set(`${hash}:primary`, dexBlob);
+      } catch (e) {
+        // Blob cache fallback
+      }
+
       const joined = strings.join("\n");
       if (/kotlin\//i.test(joined) || /kotlin\.Metadata/i.test(joined)) technologies.add("Kotlin");
       if (/androidx\./i.test(joined)) technologies.add("AndroidX");
@@ -157,6 +182,12 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
   } catch (err) {
     console.warn("Failed to parse signature:", err);
   }
+
+  // Automated SAST & Secret Scanner across collected bytecode strings and manifest
+  if (manifestXml) {
+    allCollectedStrings.push(...manifestXml.split(/\r?\n/));
+  }
+  const secrets: SecretFinding[] = scanForSecrets(allCollectedStrings);
 
   if (names.some(n => n.startsWith("kotlin/"))) technologies.add("Kotlin");
   if (names.some(n => n.startsWith("androidx/"))) technologies.add("AndroidX");
@@ -212,23 +243,32 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
   if (manifest.debuggable === "true") findings.push({
     severity: "high",
     title: "Application is marked debuggable",
-    evidence: "AndroidManifest.xml: android:debuggable=\"true\""
+    evidence: "AndroidManifest.xml: android:debuggable=\"true\" (Allows attackers to attach runtime debuggers and dump memory)"
   });
   if (manifest.allowBackup === "true") findings.push({
     severity: "medium",
     title: "Backup is enabled",
-    evidence: "AndroidManifest.xml: android:allowBackup=\"true\""
+    evidence: "AndroidManifest.xml: android:allowBackup=\"true\" (Application data can be extracted via ADB backup)"
   });
   if (manifest.usesCleartextTraffic === "true") findings.push({
     severity: "medium",
-    title: "Cleartext traffic is explicitly allowed",
-    evidence: "AndroidManifest.xml: android:usesCleartextTraffic=\"true\""
+    title: "Cleartext HTTP traffic is explicitly allowed",
+    evidence: "AndroidManifest.xml: android:usesCleartextTraffic=\"true\" (Traffic is vulnerable to MITM interception)"
   });
   if (manifest.permissions.some(p => /READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|CAMERA|RECORD_AUDIO|ACCESS_FINE_LOCATION/i.test(p))) {
     findings.push({
       severity: "info",
       title: "Sensitive permissions requested",
       evidence: manifest.permissions.filter(p => /READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|CAMERA|RECORD_AUDIO|ACCESS_FINE_LOCATION/i.test(p)).join(", ")
+    });
+  }
+
+  // Append SAST Secret Findings
+  for (const s of secrets) {
+    findings.push({
+      severity: s.severity === "critical" ? "critical" : s.severity,
+      title: `Secret / Vulnerability: ${s.name}`,
+      evidence: `${s.description} | Matched Pattern: ${s.match}`
     });
   }
 
@@ -254,6 +294,7 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
     technologies: [...technologies],
     dexFiles,
     nativeLibraries,
+    secrets,
     resources,
     assets,
     manifestXml,
