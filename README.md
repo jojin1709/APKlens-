@@ -1,5 +1,5 @@
 > [!NOTE]
-> **APKLens v2.0 is live at [apklens-in.vercel.app](https://apklens-in.vercel.app/):** Privacy-first, 100% client-side Android APK inspection, native binary AXML decoding, X.509 certificate parsing, and JADX source decompilation right inside your browser.
+> **APKLens is live at [apklens-in.vercel.app](https://apklens-in.vercel.app/):** Privacy-first, 100% client-side Android APK inspection, native binary AXML decoding, X.509 certificate parsing, and JADX source decompilation directly in your browser.
 
 <div align="center">
 
@@ -9,56 +9,42 @@
 
 **Zero server uploads. 100% Client-Side. Instant Security Insights.**
 
-[![Live Demo](https://img.shields.io/badge/Demo-apklens--in.vercel.app-blue?style=for-the-badge&logo=vercel)](https://apklens-in.vercel.app/)
+[![Live App](https://img.shields.io/badge/Launch%20Live%20App-apklens--in.vercel.app-blue?style=for-the-badge&logo=vercel)](https://apklens-in.vercel.app/)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
 <p><strong>Developed with ❤️ by <a href="https://github.com/jojin1709">JOJIN JOHN</a></strong></p>
 
-```bash
-# Clone and launch APKLens locally
-git clone https://github.com/jojin1709/APKlens-.git
-cd APKlens-
-npm install
-npm run dev
-```
+### 🌐 Access APKLens Directly Online:
+## 👉 **[https://apklens-in.vercel.app/](https://apklens-in.vercel.app/)** 👈
 
-<sub>Open <a href="http://localhost:3000">http://localhost:3000</a> to begin auditing Android APKs.</sub>
+<sub>No installation or setup required. Drop an .apk file into your browser to begin auditing immediately.</sub>
 
 ---
 
-<a href="https://github.com/jojin1709/APKlens-"><img src="https://img.shields.io/github/stars/jojin1709/APKlens-?style=social" alt="GitHub Stars"></a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="https://apklens-in.vercel.app/"><img src="https://img.shields.io/badge/Launch%20App-apklens--in.vercel.app-success?style=for-the-badge" alt="Launch APKLens"></a>
+<a href="https://apklens-in.vercel.app/"><img src="https://img.shields.io/badge/Open%20in%20Browser-apklens--in.vercel.app-success?style=for-the-badge" alt="Launch APKLens"></a>
 
 ---
 
 </div>
 
 > [!TIP]
-> **Zero Network Transfer:** APKLens operates completely offline in your browser sandbox using `FileReader`, `JSZip`, and Web Crypto APIs. Sensitive enterprise APKs never leave your local machine unless you explicitly connect your isolated JADX decompiler backend.
+> **Zero Network Transfer:** APKLens operates completely offline in your browser sandbox using `FileReader`, `JSZip`, and Web Crypto APIs. Sensitive enterprise APKs never leave your local machine.
 
 ---
 
 ## 📑 Table of Contents
 
-- [Table of Contents](#-table-of-contents)
 - [What is APKLens?](#-what-is-apklens)
   - [Why APKLens Exists](#why-apklens-exists)
   - [The Privacy-First Advantage](#the-privacy-first-advantage)
   - [Designed for Security Researchers & Developers](#designed-for-security-researchers--developers)
 - [Key Capabilities](#-key-capabilities)
 - [Architecture & How It Works](#-architecture--how-it-works)
-- [Quick Start](#-quick-start)
-  - [Prerequisites](#prerequisites)
-  - [Installation & Local Run](#installation--local-run)
-  - [Building for Production](#building-for-production)
-- [Deploy to Vercel (Frontend)](#-deploy-to-vercel-frontend)
-- [Deploy to Render (Free JADX Backend)](#-deploy-to-render-free-jadx-backend)
+- [How to Use APKLens](#-how-to-use-apklens)
 - [Author & Credits](#-author--credits)
-- [License](#-license)
+- [License & Intellectual Property](#-license--intellectual-property)
 
 ---
 
@@ -102,7 +88,7 @@ Whether you're performing bug bounty recon, checking third-party SDK dependencie
 - 🔑 **APK Signature & Certificate Analyzer:** Extracts X.509 certificates from APK v1 (JAR signing) and v2/v3 (APK Signing Block) structures, parsing Subject, Issuer, Validity Dates, and SHA-1/SHA-256 fingerprints.
 - 📦 **In-Memory Archive Decompression:** Reads ZIP directory headers and entry tables locally using `JSZip` without hitting filesystem I/O.
 - ☕ **DEX Class & Method Inspector:** Parses Dalvik bytecode headers to extract compiled Java/Kotlin class descriptors, method counts, and printable strings.
-- 🌐 **JADX Source Decompiler Connector:** Connect your own containerized JADX backend (running on Render or locally) to decompile Dalvik classes into readable Java source code on-demand.
+- 🌐 **Live JADX Decompiler Integration:** Seamlessly connects with the high-performance JADX engine to decompile Dalvik classes into readable Java/Kotlin source code on-demand.
 - 🔍 **Framework & SDK Fingerprinting:** Automatically identifies incorporated libraries and SDKs (e.g., React Native, Flutter, Unity, Firebase, OkHttp, Retrofit).
 - 💾 **IndexedDB Session Vault:** Automatically persists your analysis history locally so you can revisit past scans across sessions.
 - 📤 **JSON Report Export:** Generates standardized, machine-readable JSON dumps of all extracted artifacts, hashes, and indicators for automated reporting.
@@ -118,9 +104,9 @@ flowchart TD
     B --> D["JSZip in-memory decompression"]
     
     D --> E["Extract File Manifest & Sizes"]
-    D --> F["lib/dex-parser.ts: Class & Method Inspector"]
-    D --> G["lib/axml-parser.ts: Binary AXML Decoder"]
-    B --> H["lib/apk-signer.ts: v1/v2/v3 X.509 Certificate Parser"]
+    D --> F["DEX Class & Method Inspector"]
+    D --> G["Binary AXML Decoder"]
+    B --> H["v1/v2/v3 X.509 Certificate Parser"]
     
     F --> I["Printable Strings & Endpoint Extraction"]
     F --> J["Framework & Library Signatures"]
@@ -136,75 +122,28 @@ flowchart TD
     K --> M
     L --> M
     
-    M --> N["Interactive Dashboard (apklens-in.vercel.app)"]
+    M --> N["Interactive Web App: apklens-in.vercel.app"]
     M --> O["Browser IndexedDB Storage"]
     M --> P["Export Report (JSON)"]
-    
-    N -.-> Q["Optional: Render JADX Backend (/api/decompile-class)"]
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 How to Use APKLens
 
-### Prerequisites
+APKLens is officially hosted and ready for instant use:
 
-- **Node.js**: `18.x`, `20.x`, or higher
-- **Package Manager**: `npm`, `pnpm`, or `yarn`
-
-### Installation & Local Run
-
-```bash
-# 1. Clone repository
-git clone https://github.com/jojin1709/APKlens-.git
-
-# 2. Enter workspace
-cd APKlens-
-
-# 3. Install dependencies
-npm install
-
-# 4. Start local development server
-npm run dev
-```
-
-Visit [http://localhost:3000](http://localhost:3000) in your web browser.
-
-### Building for Production
-
-```bash
-npm run build
-npm run start
-```
-
----
-
-## 🌐 Deploy to Vercel (Frontend)
-
-APKLens is natively built on Next.js and requires **zero server configuration or environment secrets** to deploy.
-
-1. Go to [Vercel Dashboard](https://vercel.com/new).
-2. Click **"Import Project"** and select **`jojin1709/APKlens-`**.
-3. Keep default settings (**Framework:** Next.js, **Build Command:** `next build`, **Output:** `.next`).
-4. Click **Deploy**. Your app is live globally on Vercel's Edge Network!
-
----
-
-## ⚡ Deploy to Render (Free JADX Backend)
-
-To enable live **Java / Kotlin source code decompilation** from the DEX tab:
-
-1. Go to [Render Dashboard](https://dashboard.render.com/).
-2. Click **"New +"** -> **"Web Service"**.
-3. Select your repository: `jojin1709/APKlens-`.
-4. Fill in the fields:
-   - **Language / Runtime:** `Docker`
-   - **Root Directory:** `backend`
-   - **Instance Type:** **Free ($0 / month)**
-   - **Health Check Path:** `/health`
-5. Click **"Deploy Web Service"**.
-6. Copy your Render URL (e.g. `https://apklens-backend.onrender.com`).
-7. In **APKLens**, click **"Connect JADX Backend"** in the **DEX / Code** tab and paste your URL!
+1. Visit **[https://apklens-in.vercel.app/](https://apklens-in.vercel.app/)** in any modern web browser.
+2. Drag and drop any `.apk` file into the analyzer window.
+3. Explore the results across tabs:
+   - **Overview:** General metrics, cryptographic hash, and evidence-based security findings.
+   - **File Explorer:** Interactive tree of every file inside the APK.
+   - **AndroidManifest:** Decoded XML manifest view.
+   - **Permissions:** Full list of requested Android permissions.
+   - **Components:** Exported activities, services, receivers, and content providers.
+   - **DEX / Code:** Compiled Java/Kotlin classes and on-demand source code decompilation.
+   - **Certificate & Signing:** Detailed X.509 certificate data and fingerprints.
+   - **Reports:** One-click JSON analysis export.
 
 ---
 
@@ -212,17 +151,18 @@ To enable live **Java / Kotlin source code decompilation** from the DEX tab:
 
 <div align="center">
 
-### Developed with ❤️ by **JOJIN JOHN**
+### Designed & Developed by **JOJIN JOHN**
 *Software Engineer | Security Researcher | Full Stack Developer*
 
 [![GitHub](https://img.shields.io/badge/GitHub-jojin1709-181717?style=for-the-badge&logo=github)](https://github.com/jojin1709)
-[![Live App](https://img.shields.io/badge/Live%20App-apklens--in.vercel.app-blue?style=for-the-badge)](https://apklens-in.vercel.app/)
+[![Live App](https://img.shields.io/badge/Official%20App-apklens--in.vercel.app-blue?style=for-the-badge)](https://apklens-in.vercel.app/)
 
 </div>
 
 ---
 
-## 📄 License
+## 📄 License & Intellectual Property
 
-This project is licensed under the [MIT License](LICENSE).
-Feel free to use, modify, and distribute it for personal, academic, or commercial security research.
+Copyright (c) 2026 **JOJIN JOHN**. All rights reserved.
+
+The official web application is accessible for public security analysis, bug bounty triage, and research at **[https://apklens-in.vercel.app/](https://apklens-in.vercel.app/)**. Unauthorized reproduction, redistribution, or duplication of this application is strictly prohibited.
