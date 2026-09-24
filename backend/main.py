@@ -59,29 +59,22 @@ async def decompile_class(
         with open(input_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
 
-        out_dir = os.path.join(temp_dir, "decompiled")
-        os.makedirs(out_dir, exist_ok=True)
-
-        # Build jadx command to decompile specific class / package
-        pkg = ".".join(className.split(".")[:-1]) if "." in className else ""
-        cmd = ["jadx", "--no-res", "-d", out_dir]
-        if pkg:
-            cmd.extend(["--include-pkg", pkg])
-        cmd.append(input_path)
-
+        target_file = os.path.join(temp_dir, "decompiled.java")
+        cmd = ["jadx", "--no-res", "--single-class", className, "--single-class-output", target_file, input_path]
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
 
-        # Look for expected class file in out_dir/sources
-        sources_dir = os.path.join(out_dir, "sources")
-        expected_rel_path = className.replace(".", os.sep) + ".java"
-        target_file = os.path.join(sources_dir, expected_rel_path)
-
         found_code = None
-        if os.path.exists(target_file):
+        if os.path.exists(target_file) and os.path.getsize(target_file) > 0:
             with open(target_file, "r", encoding="utf-8", errors="replace") as f:
                 found_code = f.read()
-        else:
-            # Search recursively for matching filename
+
+        if not found_code:
+            out_dir = os.path.join(temp_dir, "decompiled")
+            os.makedirs(out_dir, exist_ok=True)
+            fallback_cmd = ["jadx", "--no-res", "-d", out_dir, input_path]
+            res = subprocess.run(fallback_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=90)
+
+            sources_dir = os.path.join(out_dir, "sources")
             target_basename = className.split(".")[-1] + ".java"
             for root, _, files in os.walk(sources_dir):
                 if target_basename in files:
@@ -92,7 +85,11 @@ async def decompile_class(
         if not found_code:
             return JSONResponse(
                 status_code=404,
-                content={"error": f"Class {className} could not be decompiled or located.", "jadx_output": res.stdout}
+                content={
+                    "error": f"Class {className} could not be decompiled or located.",
+                    "jadx_output": res.stdout,
+                    "jadx_stderr": res.stderr
+                }
             )
 
         return {

@@ -215,9 +215,9 @@ export function decodeAxml(bytes: Uint8Array): DecodedManifest {
         const attrCount = view.getUint16(offset + 28, true);
 
         const tagName = nameIdx >= 0 ? stringPool.strings[nameIdx] : "unknown";
-        const attrs: { name: string; value: string }[] = [];
+        const attrs: { name: string; rawName: string; value: string }[] = [];
 
-        let currentAttrOffset = offset + attrStart;
+        let currentAttrOffset = offset + headerSize + attrStart;
         for (let i = 0; i < attrCount; i++) {
           const attrNsIdx = view.getInt32(currentAttrOffset, true);
           const attrNameIdx = view.getInt32(currentAttrOffset + 4, true);
@@ -231,7 +231,7 @@ export function decodeAxml(bytes: Uint8Array): DecodedManifest {
           const qualifiedName = prefix ? `${prefix}:${attrName}` : attrName;
 
           const val = formatValue(valType, valData, stringPool, attrRawValueIdx);
-          attrs.push({ name: qualifiedName, value: val });
+          attrs.push({ name: qualifiedName, rawName: attrName, value: val });
 
           currentAttrOffset += attrSize;
         }
@@ -249,7 +249,7 @@ export function decodeAxml(bytes: Uint8Array): DecodedManifest {
         indent += "    ";
 
         // Extract metadata
-        const getAttr = (k: string) => attrs.find(a => a.name === `android:${k}` || a.name === k)?.value;
+        const getAttr = (k: string) => attrs.find(a => a.name === `android:${k}` || a.name === k || a.rawName === k)?.value;
 
         if (tagName === "manifest") {
           packageName = getAttr("package") ?? attrs.find(a => a.name === "package")?.value ?? null;
