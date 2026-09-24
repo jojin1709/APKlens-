@@ -1,5 +1,8 @@
 import JSZip from "jszip";
 import type { APKAnalysis, APKFile } from "@/types/apk";
+import { decodeAxml, isBinaryAxml, type DecodedManifest } from "@/lib/axml-parser";
+import { parseV1Signature, parseV2V3Signature, type APKCertificate } from "@/lib/apk-signer";
+import { parseDex } from "@/lib/dex-parser";
 
 function sha256(buffer: ArrayBuffer): Promise<string> {
   return crypto.subtle.digest("SHA-256", buffer).then((hash) =>
@@ -32,7 +35,7 @@ function normalizeComponentName(name: string | null, pkg: string | null): string
   return name;
 }
 
-function parseManifest(xml: string) {
+function parseManifest(xml: string): DecodedManifest {
   const doc = new DOMParser().parseFromString(xml, "application/xml");
   const manifest = doc.querySelector("manifest");
   const app = doc.querySelector("application");
@@ -51,6 +54,7 @@ function parseManifest(xml: string) {
     })).filter(x => x.name);
 
   return {
+    xml,
     packageName: pkg,
     versionName: manifest?.getAttribute("android:versionName") ?? manifest?.getAttribute("versionName") ?? null,
     versionCode: manifest?.getAttribute("android:versionCode") ?? manifest?.getAttribute("versionCode") ?? null,
@@ -76,8 +80,9 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
   const resources: string[] = [];
   const assets: string[] = [];
   const nativeLibraries: { path: string; size: number }[] = [];
-  const dexFiles: { path: string; size: number; strings: number }[] = [];
+  const dexFiles: APKAnalysis["dexFiles"] = [];
   let manifestXml: string | null = null;
+  let decodedManifest: DecodedManifest | null = null;
   const urls: string[] = [];
   const webViews: string[] = [];
   const technologies = new Set<string>();
@@ -89,17 +94,39 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
     files.push({ path, size: bytes.byteLength, type: "file" });
 
     if (path === "AndroidManifest.xml") {
-      // Android binary XML is common in APKs. Plain XML is supported directly;
-      // binary AXML is intentionally reported as unavailable rather than fabricated.
-      const text = decodeBytes(bytes).trim();
-      if (text.startsWith("<")) manifestXml = text;
+      if (isBinaryAxml(bytes)) {
+        try {
+          decodedManifest = decodeAxml(bytes);
+          manifestXml = decodedManifest.xml;
+        } catch (err) {
+          console.warn("Failed to decode binary AXML:", err);
+        }
+      } else {
+        const text = decodeBytes(bytes).trim();
+        if (text.startsWith("<")) {
+          manifestXml = text;
+          try {
+            decodedManifest = parseManifest(text);
+          } catch {
+            // fallback
+          }
+        }
+      }
     }
     if (path.startsWith("res/")) resources.push(path);
     if (path.startsWith("assets/")) assets.push(path);
     if (path.startsWith("lib/") && path.endsWith(".so")) nativeLibraries.push({ path, size: bytes.byteLength });
     if (/^classes\d*\.dex$/.test(path)) {
       const strings = extractStrings(bytes);
-      dexFiles.push({ path, size: bytes.byteLength, strings: strings.length });
+      const dexData = parseDex(bytes, path);
+      dexFiles.push({
+        path,
+        size: bytes.byteLength,
+        strings: strings.length,
+        classCount: dexData.classCount,
+        methodCount: dexData.methodCount,
+        classes: dexData.classes
+      });
       const joined = strings.join("\n");
       if (/kotlin\//i.test(joined) || /kotlin\.Metadata/i.test(joined)) technologies.add("Kotlin");
       if (/androidx\./i.test(joined)) technologies.add("AndroidX");
@@ -115,6 +142,22 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
     }
   }
 
+  // Parse APK Signature (v2/v3 from signing block, or v1 from META-INF)
+  let certificate: APKCertificate | null = null;
+  try {
+    certificate = await parseV2V3Signature(buffer);
+    if (!certificate) {
+      const v1CertPath = names.find(n => /^META-INF\/.*\.(RSA|DSA|EC)$/i.test(n));
+      if (v1CertPath) {
+        const certEntry = zip.files[v1CertPath];
+        const certBytes = await certEntry.async("uint8array");
+        certificate = await parseV1Signature(certBytes);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to parse signature:", err);
+  }
+
   if (names.some(n => n.startsWith("kotlin/"))) technologies.add("Kotlin");
   if (names.some(n => n.startsWith("androidx/"))) technologies.add("AndroidX");
   if (names.some(n => n.startsWith("META-INF/"))) technologies.add("Android APK");
@@ -124,7 +167,8 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
     try { return new URL(u).hostname; } catch { return ""; }
   }).filter(Boolean));
 
-  const manifest = manifestXml ? parseManifest(manifestXml) : {
+  const manifest = decodedManifest ?? {
+    xml: "",
     packageName: null, versionName: null, versionCode: null, minSdk: null, targetSdk: null,
     permissions: [], activities: [], services: [], receivers: [], providers: [],
     debuggable: null, allowBackup: null, usesCleartextTraffic: null
@@ -134,10 +178,37 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
   if (!manifestXml) {
     findings.push({
       severity: "info",
-      title: "Manifest requires binary AXML decoding",
-      evidence: "The APK contains AndroidManifest.xml, but it is binary Android XML. Browser-only mode does not claim to decode it."
+      title: "No AndroidManifest.xml found",
+      evidence: "The APK archive does not contain an AndroidManifest.xml entry."
     });
   }
+
+  if (certificate) {
+    findings.push({
+      severity: "info",
+      title: `APK is signed (${certificate.scheme})`,
+      evidence: `Subject: ${certificate.subject} · Algorithm: ${certificate.sigAlg}`
+    });
+    try {
+      const expiry = new Date(certificate.validTo);
+      if (!isNaN(expiry.getTime()) && expiry < new Date()) {
+        findings.push({
+          severity: "high",
+          title: "Signing certificate has expired",
+          evidence: `Certificate expired on ${certificate.validTo}`
+        });
+      }
+    } catch {
+      // ignore date parse error
+    }
+  } else {
+    findings.push({
+      severity: "medium",
+      title: "Unsigned APK / No valid signature detected",
+      evidence: "No valid APK v1 (JAR) or v2/v3 (APK Signing Block) signature block was detected."
+    });
+  }
+
   if (manifest.debuggable === "true") findings.push({
     severity: "high",
     title: "Application is marked debuggable",
@@ -186,6 +257,7 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
     resources,
     assets,
     manifestXml,
+    certificate,
     files,
     findings
   };

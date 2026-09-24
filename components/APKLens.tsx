@@ -174,11 +174,83 @@ function ListCard({title,items}:{title:string,items:string[]}) {return <div clas
 function ListView({title,items,empty}:{title:string,items:string[],empty:string}) {return <div className="panel full"><div className="panel-title">{title}<span>{items.length}</span></div>{items.length?items.map(x=><div className="list-row" key={x}>{x}</div>):<div className="empty">{empty}</div>}</div>}
 function FilesView({files,query,setQuery}:{files:APKAnalysis["files"],query:string,setQuery:(s:string)=>void}) {return <div className="panel full"><div className="panel-title">APK File Explorer <span>{files.length} files</span></div><div className="search"><Search size={15}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search files..."/></div><div className="file-list">{files.map(f=><div className="file-row" key={f.path}>{f.path.includes("/")?<Folder size={15}/>:<FileText size={15}/>}<span>{f.path}</span><small>{formatBytes(f.size)}</small></div>)}</div></div>}
 function Components({analysis}:{analysis:APKAnalysis}) {return <div className="three">{(["Activities","Services","Receivers"] as const).map(kind=>{const arr=analysis[kind.toLowerCase() as "activities"|"services"|"receivers"];return <div className="panel" key={kind}><div className="panel-title">{kind}<span>{arr.length}</span></div>{arr.map((x:any)=><div className="component"><b>{x.name}</b><span>{x.exported===null?"exported: unknown":`exported: ${x.exported}`}</span></div>)}</div>})}<div className="panel"><div className="panel-title">Providers<span>{analysis.providers.length}</span></div>{analysis.providers.map(x=><div className="component"><b>{x.name}</b><span>exported: {x.exported ?? "unknown"}</span></div>)}</div></div>}
-function CodeView({analysis}:{analysis:APKAnalysis}) {return <div className="panel full"><div className="panel-title">DEX Files</div>{analysis.dexFiles.map(x=><div className="dex-card" key={x.path}><Code2 size={18}/><div><b>{x.path}</b><span>{formatBytes(x.size)} · {x.strings.toLocaleString()} extracted printable strings</span></div></div>)}<div className="notice"><AlertCircle size={16}/> Browser-only v1 does not claim to decompile DEX into Java/Kotlin. A future isolated analyzer container can provide JADX output without changing the UI.</div></div>}
+function CodeView({analysis}:{analysis:APKAnalysis}) {
+  const [classFilter, setClassFilter] = useState("");
+  const allDexClasses = useMemo(() => {
+    return analysis.dexFiles.flatMap(d => (d.classes ?? []).map(c => ({ dex: d.path, name: c })));
+  }, [analysis]);
+  const filtered = useMemo(() => {
+    if (!classFilter.trim()) return allDexClasses.slice(0, 300);
+    return allDexClasses.filter(c => c.name.toLowerCase().includes(classFilter.toLowerCase())).slice(0, 300);
+  }, [allDexClasses, classFilter]);
+
+  return (
+    <div className="panel full">
+      <div className="panel-title">DEX Files & Classes <span>{analysis.dexFiles.length} DEX files</span></div>
+      <div className="meta-grid" style={{ marginBottom: "1.2rem" }}>
+        {analysis.dexFiles.map(x => (
+          <div className="dex-card" key={x.path} style={{ margin: 0 }}>
+            <Code2 size={20}/>
+            <div>
+              <b>{x.path}</b>
+              <span>{formatBytes(x.size)} · {x.classCount ?? 0} classes · {x.methodCount ?? 0} methods · {x.strings.toLocaleString()} strings</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="panel-title" style={{ marginTop: "1rem" }}>
+        Compiled Java / Kotlin Classes <span>{allDexClasses.length} parsed classes</span>
+      </div>
+      <div className="search">
+        <Search size={15}/>
+        <input value={classFilter} onChange={e => setClassFilter(e.target.value)} placeholder="Filter class names (e.g. com.example.MainActivity)..."/>
+      </div>
+      <div className="file-list" style={{ maxHeight: "360px", overflowY: "auto" }}>
+        {filtered.length ? filtered.map((c, i) => (
+          <div className="file-row" key={`${c.dex}-${c.name}-${i}`}>
+            <Code2 size={14}/>
+            <span>{c.name}</span>
+            <small>{c.dex}</small>
+          </div>
+        )) : <div className="empty">No classes matched your search.</div>}
+      </div>
+    </div>
+  );
+}
+
 function ResourceView({analysis}:{analysis:APKAnalysis}) {return <div className="two"><ListView title="Resources" items={analysis.resources} empty="No res/ files found."/><ListView title="Assets" items={analysis.assets} empty="No assets found."/></div>}
 function NetworkView({analysis}:{analysis:APKAnalysis}) {return <div className="two"><ListView title="URLs" items={analysis.urls} empty="No HTTP(S) URLs found in scanned DEX strings."/><ListView title="Domains" items={analysis.domains} empty="No domains found."/><ListView title="WebView indicators" items={analysis.webViews} empty="No WebView signature detected."/></div>}
 function SecurityView({analysis}:{analysis:APKAnalysis}) {return <div className="panel full"><div className="panel-title">Security Analysis</div>{analysis.findings.length?analysis.findings.map((f,i)=><Finding key={i} f={f}/>):<div className="empty">No indicators triggered.</div>}<div className="notice"><ShieldCheck size={16}/> These are static indicators, not proof of exploitable vulnerabilities. Every result includes evidence from the APK artifacts scanned by this build.</div></div>}
-function SigningView({analysis}:{analysis:APKAnalysis}) {return <div className="panel full"><div className="panel-title">Certificate & Signing</div><div className="empty">Certificate parsing is not implemented in this browser-only build. The APK is never represented as signed/unsigned without a real signature parser. SHA-256 is available in the Overview.</div></div>}
+
+function SigningView({analysis}:{analysis:APKAnalysis}) {
+  const cert = analysis.certificate;
+  if (!cert) {
+    return (
+      <div className="panel full">
+        <div className="panel-title">Certificate & Signing</div>
+        <div className="empty">No valid APK signature (v1 JAR or v2/v3 Signing Block) was detected in this file.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="panel full">
+      <div className="panel-title">Certificate & Signing <span>Scheme: {cert.scheme}</span></div>
+      <div className="meta-grid" style={{ marginTop: "1rem" }}>
+        <Meta label="Signing Scheme" value={cert.scheme}/>
+        <Meta label="Signature Algorithm" value={cert.sigAlg}/>
+        <Meta label="Valid From" value={cert.validFrom}/>
+        <Meta label="Valid To" value={cert.validTo}/>
+        <Meta label="Subject" value={cert.subject}/>
+        <Meta label="Issuer" value={cert.issuer}/>
+        <Meta label="Serial Number" value={cert.serialNumber} mono/>
+        <Meta label="SHA-256 Fingerprint" value={cert.sha256Fingerprint} mono/>
+        <Meta label="SHA-1 Fingerprint" value={cert.sha1Fingerprint} mono/>
+      </div>
+    </div>
+  );
+}
 function Reports({analysis,downloadJSON}:{analysis:APKAnalysis,downloadJSON:()=>void}) {return <div className="panel full"><div className="panel-title">Reports</div><p className="report-text">Export the complete structured analysis currently stored in this browser.</p><button className="primary" onClick={downloadJSON}><FileText size={15}/> Download JSON report</button><div className="notice"><Lock size={16}/> The report is generated from local IndexedDB data. This build does not upload reports to a server.</div></div>}
 function CodePanel({title,code}:{title:string,code:string}) {return <div className="panel full"><div className="panel-title">{title}</div><pre className="code">{code}</pre></div>}
 function formatBytes(n:number){if(n<1024)return `${n} B`;if(n<1024**2)return `${(n/1024).toFixed(1)} KB`;if(n<1024**3)return `${(n/1024**2).toFixed(2)} MB`;return `${(n/1024**3).toFixed(2)} GB`;}

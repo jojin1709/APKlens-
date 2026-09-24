@@ -1,3 +1,7 @@
+import type { APKCertificate } from "@/lib/apk-signer";
+
+export type { APKCertificate };
+
 export type APKFile = {
   path: string;
   size: number;
@@ -24,11 +28,12 @@ export type APKAnalysis = {
   domains: string[];
   webViews: string[];
   technologies: string[];
-  dexFiles: { path: string; size: number; strings: number }[];
+  dexFiles: { path: string; size: number; strings: number; classCount?: number; methodCount?: number; classes?: string[] }[];
   nativeLibraries: { path: string; size: number }[];
   resources: string[];
   assets: string[];
   manifestXml: string | null;
+  certificate: APKCertificate | null;
   files: APKFile[];
   findings: {
     severity: "high" | "medium" | "low" | "info";
