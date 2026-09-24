@@ -180,9 +180,9 @@ function CodeView({analysis, apkFile}:{analysis:APKAnalysis, apkFile: File | nul
   const [classFilter, setClassFilter] = useState("");
   const [backendUrl, setBackendUrl] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("apklens_backend_url") || "https://apklens.onrender.com";
+      return process.env.NEXT_PUBLIC_BACKEND_URL || localStorage.getItem("apklens_backend_url") || "https://apklens.onrender.com";
     }
-    return "https://apklens.onrender.com";
+    return process.env.NEXT_PUBLIC_BACKEND_URL || "https://apklens.onrender.com";
   });
   const [showConfig, setShowConfig] = useState(false);
   const [urlInput, setUrlInput] = useState(backendUrl || "https://apklens.onrender.com");
