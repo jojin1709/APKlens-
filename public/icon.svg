@@ -1,60 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
   <defs>
-    <!-- Background Gradient -->
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0b1120"/>
-      <stop offset="50%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#1e1b4b"/>
+    <!-- Background Canvas: Deep Obsidian / Charcoal like Bionic & Proton -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0c0e15"/>
+      <stop offset="100%" stop-color="#121622"/>
     </linearGradient>
 
-    <!-- Border Gradient -->
-    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="40%" stop-color="#6366f1"/>
-      <stop offset="100%" stop-color="#a855f7"/>
+    <!-- Electric Cyan Gradient -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f5ff"/>
+      <stop offset="100%" stop-color="#00a2ff"/>
     </linearGradient>
 
-    <!-- Shield Gradient -->
-    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#6366f1" stop-opacity="0.1"/>
+    <!-- Vivid Purple Gradient like Burp & Proton -->
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b066ff"/>
+      <stop offset="100%" stop-color="#6d28d9"/>
     </linearGradient>
 
-    <!-- Lens Gradient -->
-    <linearGradient id="lensGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8"/>
-      <stop offset="100%" stop-color="#818cf8"/>
+    <!-- Bevel Rim Highlight -->
+    <linearGradient id="rim" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.02"/>
     </linearGradient>
-
-    <!-- Glow Filter -->
-    <filter id="glowFilter" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#6366f1" flood-opacity="0.4"/>
-    </filter>
   </defs>
 
-  <!-- Base Squircle Container -->
-  <rect x="6" y="6" width="116" height="116" rx="30" fill="url(#bgGrad)" stroke="url(#borderGrad)" stroke-width="3" filter="url(#glowFilter)"/>
+  <!-- Squircle Base with 1px top highlight -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#bg)"/>
+  <rect x="4.5" y="4.5" width="119" height="119" rx="27.5" fill="none" stroke="url(#rim)" stroke-width="1.5"/>
 
-  <!-- Subtle Inner Grid / Tech Lines -->
-  <path d="M24 64H104 M64 24V104" stroke="rgba(255,255,255,0.04)" stroke-width="1.5"/>
+  <!-- Android Antennae (Bold angled vector capsules) -->
+  <line x1="44" y1="36" x2="33" y2="19" stroke="url(#cyanGrad)" stroke-width="6.5" stroke-linecap="round"/>
+  <line x1="84" y1="36" x2="95" y2="19" stroke="url(#cyanGrad)" stroke-width="6.5" stroke-linecap="round"/>
 
-  <!-- Outer Security Shield -->
-  <path d="M64 26L92 37V62C92 79 79.5 94.5 64 100C48.5 94.5 36 79 36 62V37L64 26Z" 
-        fill="url(#shieldGrad)" 
-        stroke="url(#borderGrad)" 
-        stroke-width="3" 
-        stroke-linejoin="round"/>
+  <!-- Outer Lens Ring (Pure Solid White - ultra readable on small taskbars & tabs) -->
+  <circle cx="64" cy="69" r="32" fill="none" stroke="#ffffff" stroke-width="7.5"/>
 
-  <!-- Inspection Aperture / Lens Circle -->
-  <circle cx="64" cy="58" r="18" stroke="url(#lensGrad)" stroke-width="3.5" fill="rgba(15, 23, 42, 0.7)"/>
+  <!-- Precision Aperture Iris Blades (Geometric Security Prism) -->
+  <!-- Top Right Blade (Electric Cyan) -->
+  <path d="M64 44 C76 44 87 53 89 65 L64 69 Z" fill="url(#cyanGrad)"/>
 
-  <!-- Android Robot Antennae & Head inside Lens -->
-  <circle cx="59" cy="54" r="1.8" fill="#38bdf8"/>
-  <circle cx="69" cy="54" r="1.8" fill="#38bdf8"/>
-  <path d="M56 47L53 43 M72 47L75 43" stroke="#38bdf8" stroke-width="2" stroke-linecap="round"/>
-  <path d="M54 58C54 52.477 58.477 48 64 48C69.523 48 74 52.477 74 58H54Z" fill="#38bdf8" fill-opacity="0.35" stroke="#38bdf8" stroke-width="1.5"/>
+  <!-- Bottom Blade (Vivid Royal Purple) -->
+  <path d="M89 65 C88 79 78 89 64 91 L64 69 Z" fill="url(#purpleGrad)"/>
 
-  <!-- Lens Inspection Handle -->
-  <path d="M78 72L93 87" stroke="url(#lensGrad)" stroke-width="4.5" stroke-linecap="round"/>
-  <circle cx="93" cy="87" r="2.5" fill="#a855f7"/>
+  <!-- Left Blade (Cobalt / Indigo) -->
+  <path d="M64 91 C50 89 40 78 39 65 L64 69 Z" fill="#2563eb"/>
+
+  <!-- Top Left Blade (Teal / Emerald) -->
+  <path d="M39 65 C41 53 51 44 64 44 L64 69 Z" fill="#00e5a3"/>
+
+  <!-- Inner Focal Lens Core (Dark Void + White Optical Point) -->
+  <circle cx="64" cy="69" r="13" fill="#0c0e15" stroke="#ffffff" stroke-width="2.5"/>
+  <circle cx="64" cy="69" r="6" fill="url(#cyanGrad)"/>
+  <circle cx="66" cy="67" r="2" fill="#ffffff"/>
 </svg>

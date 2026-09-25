@@ -10,6 +10,16 @@ export type APKFile = {
   type: "file" | "directory";
 };
 
+export type DeepLinkInfo = {
+  scheme: string;
+  host: string | null;
+  path: string | null;
+  activity: string;
+  isBrowsable: boolean;
+  uri: string;
+  adbCommand: string;
+};
+
 export type APKAnalysis = {
   id: string;
   fileName: string;
@@ -27,9 +37,11 @@ export type APKAnalysis = {
   services: { name: string; exported: string | null }[];
   receivers: { name: string; exported: string | null }[];
   providers: { name: string; exported: string | null }[];
+  deepLinks: DeepLinkInfo[];
   urls: string[];
   domains: string[];
   webViews: string[];
+  strings: string[];
   technologies: string[];
   dexFiles: {
     path: string;

@@ -1,0 +1,1127 @@
+/* ============================================================ */
+/* ATOMIC.CHAT LUXURY DARK DESIGN SYSTEM FOR APKLENS */
+/* ============================================================ */
+
+/* Global Canvas */
+.landing-wrap {
+  position: relative;
+  z-index: 1;
+  background-color: #08080a !important;
+  min-height: 100vh;
+  overflow-x: hidden;
+  color: #f2f2f2;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.atomic-bg-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.atomic-radial-top {
+  position: absolute;
+  top: -20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1000px;
+  height: 600px;
+  background: radial-gradient(ellipse 70% 50% at 50% 20%, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.05) 50%, transparent 80%);
+  filter: blur(80px);
+}
+
+.atomic-radial-bottom {
+  position: absolute;
+  bottom: 0%;
+  right: -10%;
+  width: 700px;
+  height: 500px;
+  background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+  filter: blur(90px);
+}
+
+.atomic-mesh-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 10%, #000 40%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 10%, #000 40%, transparent 95%);
+}
+
+/* ============================================================ */
+/* ATOMIC NAVBAR */
+/* ============================================================ */
+.atomic-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(13, 13, 13, 0.88);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.25s ease;
+}
+
+.atomic-nav-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  height: 68px;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Brand with signature Atomic 45deg hover rotation */
+.atomic-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.atomic-logo-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.35s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.35s ease;
+}
+
+.atomic-brand:hover .atomic-logo-box {
+  transform: rotate(45deg);
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.atomic-logo-img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.atomic-brand-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.atomic-brand-sub {
+  font-size: 11.5px;
+  color: rgba(242, 242, 242, 0.5);
+  display: block;
+  letter-spacing: -0.01em;
+}
+
+/* Center Nav Links with Atomic Underline Slider */
+.atomic-nav-center {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.atomic-nav-link {
+  position: relative;
+  color: rgba(242, 242, 242, 0.72);
+  text-decoration: none;
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  padding: 6px 0;
+  transition: color 0.2s ease;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.atomic-nav-link:hover {
+  color: #ffffff;
+}
+
+.atomic-nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 1.5px;
+  background: #ffffff;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.atomic-nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+.dd-chev {
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+.dd-chev.open {
+  transform: rotate(180deg);
+}
+
+/* Atomic Ecosystem Dropdown Panel */
+.atomic-nav-dd {
+  position: relative;
+}
+
+@keyframes ecoIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.atomic-dd-panel.open {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 340px;
+  background: rgba(14, 14, 16, 0.96);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: ecoIn 0.24s cubic-bezier(0.165, 0.84, 0.44, 1) both;
+}
+
+.atomic-dd-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.atomic-dd-link {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 9px 12px;
+  border-radius: 11px;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.atomic-dd-link:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.atomic-dd-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.atomic-dd-link:hover .atomic-dd-icon {
+  transform: scale(1.05);
+}
+
+.atomic-dd-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.atomic-dd-copy .title {
+  color: #f2f2f2;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.atomic-dd-copy .sub {
+  color: rgba(242, 242, 242, 0.5);
+  font-size: 12px;
+  letter-spacing: -0.01em;
+}
+
+/* Atomic Buttons */
+.atomic-btn-solid {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: -0.01em;
+  padding: 8px 18px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.12);
+  text-decoration: none;
+}
+
+.atomic-btn-solid:hover {
+  background: #f0f0f0;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(255, 255, 255, 0.22);
+}
+
+.atomic-btn-solid.is-large {
+  padding: 13px 28px;
+  font-size: 15px;
+  border-radius: 13px;
+}
+
+.atomic-btn-solid.is-linkedin {
+  background: #0a66c2;
+  color: #ffffff;
+  border-color: #0a66c2;
+  box-shadow: 0 4px 16px rgba(10, 102, 194, 0.3);
+}
+
+.atomic-btn-solid.is-linkedin:hover {
+  background: #004182;
+  border-color: #004182;
+}
+
+.atomic-btn-outline {
+  background: rgba(255, 255, 255, 0.03);
+  color: #f2f2f2;
+  font-weight: 500;
+  font-size: 13.5px;
+  letter-spacing: -0.01em;
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.atomic-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+/* ============================================================ */
+/* ATOMIC HERO SECTION */
+/* ============================================================ */
+.atomic-hero {
+  position: relative;
+  padding: 85px 24px 70px;
+  text-align: center;
+}
+
+.atomic-hero-inner {
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+.atomic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgba(242, 242, 242, 0.88);
+  margin-bottom: 26px;
+}
+
+.atomic-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 10px #4ade80;
+}
+
+.atomic-hero-title {
+  font-size: clamp(2.4rem, 5.2vw, 4.1rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.038em;
+  margin-bottom: 20px;
+  color: #ffffff;
+}
+
+.atomic-hero-gradient {
+  background: linear-gradient(135deg, #ffffff 30%, rgba(255, 255, 255, 0.5) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.atomic-hero-sub {
+  font-size: 1.12rem;
+  color: rgba(242, 242, 242, 0.62);
+  max-width: 680px;
+  margin: 0 auto 36px;
+  line-height: 1.6;
+  letter-spacing: -0.015em;
+  font-weight: 400;
+}
+
+/* Atomic Dropzone */
+.atomic-dropzone {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 20px 48px -12px rgba(0, 0, 0, 0.6);
+  padding: 42px 30px;
+  cursor: pointer;
+  max-width: 760px;
+  margin: 0 auto 32px;
+  transition: all 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+  position: relative;
+}
+
+.atomic-dropzone:hover, .atomic-dropzone.drag-over {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.035);
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 24px 56px -12px rgba(99, 102, 241, 0.15);
+}
+
+.dropzone-squircle {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: #ffffff;
+  transition: transform 0.2s ease;
+}
+
+.atomic-dropzone:hover .dropzone-squircle {
+  transform: scale(1.06);
+}
+
+.dropzone-text h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f2f2f2;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+
+.browse-text {
+  color: #ffffff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.dropzone-text p {
+  font-size: 13.5px;
+  color: rgba(242, 242, 242, 0.5);
+  letter-spacing: -0.01em;
+}
+
+.dropzone-pills {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.pill-secure {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pill-fmt {
+  font-size: 11.5px;
+  color: rgba(242, 242, 242, 0.65);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 4px 10px;
+  border-radius: 9999px;
+}
+
+.atomic-hero-ctas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+/* ============================================================ */
+/* ATOMIC SECTION BASE */
+/* ============================================================ */
+.atomic-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 85px 28px;
+}
+
+.atomic-section-header {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 50px;
+}
+
+.atomic-section-tag {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(242, 242, 242, 0.5);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.atomic-section-title {
+  font-size: clamp(2rem, 3.8vw, 2.7rem);
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  line-height: 1.15;
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+
+.atomic-section-desc {
+  font-size: 15.5px;
+  color: rgba(242, 242, 242, 0.6);
+  line-height: 1.6;
+  letter-spacing: -0.015em;
+}
+
+/* ============================================================ */
+/* ORBIT CAPABILITY STAGE (Inspired by Atomic Chat Model Showcase) */
+/* ============================================================ */
+.orbit-container {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 28px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.orbit-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.orbit-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.orbit-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.orbit-item.active {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.orbit-tile {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.orbit-item-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.orbit-item-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #f2f2f2;
+  letter-spacing: -0.02em;
+}
+
+.orbit-item-tag {
+  font-size: 11.5px;
+  color: rgba(242, 242, 242, 0.45);
+}
+
+.orbit-item-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(242, 242, 242, 0.5);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.orbit-stage-preview {
+  display: flex;
+}
+
+.stage-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.stage-card-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.stage-icon-box {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #818cf8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.stage-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.025em;
+}
+
+.stage-desc {
+  font-size: 15px;
+  color: rgba(242, 242, 242, 0.7);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.stage-specs {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  flex: 1;
+}
+
+.spec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.spec-row {
+  display: flex;
+  font-size: 13.5px;
+  gap: 12px;
+}
+
+.spec-k {
+  color: rgba(242, 242, 242, 0.45);
+  font-weight: 500;
+  min-width: 140px;
+}
+
+.spec-v {
+  color: #f2f2f2;
+  font-weight: 500;
+}
+
+.stage-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ============================================================ */
+/* COMPARISON TABLE (Exact Atomic Chat Structure) */
+/* ============================================================ */
+.compare-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.compare-table {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.compare-header-row {
+  display: grid;
+  grid-template-columns: 1fr 220px 220px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.compare-cell-feature {
+  padding: 16px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(242, 242, 242, 0.85);
+  display: flex;
+  align-items: center;
+}
+
+.compare-cell-highlight {
+  position: relative;
+  background: rgba(255, 255, 255, 0.025);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.highlight-top-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #4ade80;
+}
+
+.compare-cell-dim {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.col-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f2f2f2;
+}
+
+.compare-row {
+  display: grid;
+  grid-template-columns: 1fr 220px 220px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+
+.compare-row:last-child {
+  border-bottom: none;
+}
+
+.compare-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.check-icon {
+  color: #4ade80;
+}
+
+.cross-icon {
+  color: rgba(255, 90, 90, 0.6);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ============================================================ */
+/* HOW IT WORKS (Atomic Watermark Step Cards) */
+/* ============================================================ */
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+}
+
+.step-card {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  padding: 32px 26px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.25s ease, border-color 0.25s ease;
+}
+
+.step-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.step-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-bottom: 18px;
+}
+
+.step-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.step-heading {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-bottom: 10px;
+  letter-spacing: -0.02em;
+}
+
+.step-paragraph {
+  font-size: 13.5px;
+  color: rgba(242, 242, 242, 0.55);
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+}
+
+.step-watermark {
+  position: absolute;
+  bottom: -15px;
+  right: 15px;
+  font-size: 96px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.03);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ============================================================ */
+/* ATOMIC PRIVACY STATS (Exact atomic.chat pstats) */
+/* ============================================================ */
+.atomic-privacy-section {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 85px 28px;
+}
+
+.privacy-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.privacy-title {
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  color: #ffffff;
+  margin-bottom: 18px;
+}
+
+.privacy-desc {
+  font-size: 16px;
+  color: rgba(242, 242, 242, 0.65);
+  line-height: 1.6;
+  letter-spacing: -0.015em;
+}
+
+.privacy-stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pstat-box {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 22px 26px;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.pstat-val {
+  font-size: 34px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.pstat-val.inf-glyph {
+  font-size: 42px;
+  line-height: 0.9;
+}
+
+.pstat-lbl {
+  font-size: 13.5px;
+  color: rgba(242, 242, 242, 0.55);
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================ */
+/* DEVELOPER SECTION */
+/* ============================================================ */
+.dev-card-atomic {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.dev-card-glow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+.dev-top-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.dev-avatar-box {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dev-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #4ade80;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.dev-author-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.025em;
+}
+
+.dev-author-role {
+  font-size: 13.5px;
+  color: rgba(242, 242, 242, 0.5);
+}
+
+.dev-bio {
+  font-size: 15px;
+  color: rgba(242, 242, 242, 0.7);
+  line-height: 1.65;
+  margin-bottom: 26px;
+  max-width: 780px;
+}
+
+.dev-links-atomic {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================ */
+/* BOTTOM CTA & FOOTER */
+/* ============================================================ */
+.atomic-cta-banner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 60px 28px 80px;
+}
+
+.cta-banner-inner {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 56px 36px;
+  text-align: center;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+.cta-banner-title {
+  font-size: clamp(2rem, 3.8vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+
+.cta-banner-sub {
+  font-size: 15.5px;
+  color: rgba(242, 242, 242, 0.6);
+  margin-bottom: 30px;
+  letter-spacing: -0.01em;
+}
+
+.atomic-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 36px 28px;
+}
+
+.footer-inner-atomic {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  font-size: 13px;
+  color: rgba(242, 242, 242, 0.45);
+}
+
+.footer-brand-atomic {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-brand-title {
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.footer-brand-tag {
+  color: rgba(242, 242, 242, 0.5);
+}
+
+.footer-nav-atomic {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.footer-link-atomic {
+  color: rgba(242, 242, 242, 0.6);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s ease;
+}
+
+.footer-link-atomic:hover {
+  color: #ffffff;
+}
+
+.footer-link-atomic.sponsor:hover {
+  color: #fb7185;
+}
+
+.footer-copy-atomic {
+  width: 100%;
+  font-size: 12px;
+  color: rgba(242, 242, 242, 0.35);
+  margin-top: 6px;
+}
+
+@media (max-width: 900px) {
+  .orbit-container { grid-template-columns: 1fr; }
+  .privacy-inner { grid-template-columns: 1fr; gap: 32px; }
+  .compare-header-row, .compare-row { grid-template-columns: 1fr 140px 140px; }
+  .steps-grid { grid-template-columns: 1fr; }
+  .atomic-nav-center { display: none; }
+}

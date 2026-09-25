@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./atomic-landing.css";
 
 export const metadata: Metadata = {
   title: "APKLens — Android APK Security & Architecture Suite",

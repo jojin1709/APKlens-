@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity, AlertCircle, Archive, ArrowLeft, Box, Check, CheckCircle2,
+  Activity, AlertCircle, Archive, ArrowLeft, ArrowUpRight, Box, Check, CheckCircle2,
   ChevronDown, ChevronRight, Code2, Copy, Cpu, Database, Download, Eye, FileCode2, FileText,
-  Folder, Globe, KeyRound, Layers, LayoutDashboard, Linkedin, Lock, Package, Radio, Search,
+  Folder, Globe, KeyRound, Layers, LayoutDashboard, Link2, Linkedin, Lock, Package, Radio, Search,
   Server, Settings, Shield, ShieldAlert, ShieldCheck, Smartphone,
   Sparkles, Trash2, Upload, X, XCircle, Zap
 } from "lucide-react";
@@ -13,6 +13,8 @@ import { analyzeAPK, dexBlobCache } from "@/lib/apk-analyzer";
 import { clearAnalyses, deleteAnalysis, listAnalyses, saveAnalysis } from "@/lib/local-db";
 import { generateSarif } from "@/lib/sarif-generator";
 import { openPrintableReport } from "@/lib/pdf-report-generator";
+import { generateMarkdownReport, generateCSVFindings } from "@/lib/export-utils";
+import { mapToOWASPTop10 } from "@/lib/owasp-mapper";
 import type { APKAnalysis } from "@/types/apk";
 
 type Tab =
@@ -21,11 +23,14 @@ type Tab =
   | "Manifest"
   | "Permissions"
   | "Components"
+  | "DeepLinks"
   | "Code"
   | "Native"
   | "Resources"
   | "Network"
   | "Security"
+  | "OWASP"
+  | "Strings"
   | "Signing"
   | "Technology"
   | "Reports";
@@ -35,15 +40,18 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "Files", label: "File Explorer", icon: <Folder size={16} /> },
   { id: "Manifest", label: "AndroidManifest", icon: <FileCode2 size={16} /> },
   { id: "Permissions", label: "Permissions", icon: <Lock size={16} /> },
-  { id: "Components", label: "Components", icon: <Activity size={16} /> },
+  { id: "Components", label: "Components", icon: <Layers size={16} /> },
+  { id: "DeepLinks", label: "Deep Links & Schemes", icon: <Link2 size={16} /> },
   { id: "Code", label: "DEX & Decompiler", icon: <Code2 size={16} /> },
   { id: "Native", label: "Native Libraries (.so)", icon: <Cpu size={16} /> },
   { id: "Resources", label: "Resources", icon: <Archive size={16} /> },
   { id: "Network", label: "Network & URLs", icon: <Globe size={16} /> },
-  { id: "Security", label: "Security & Secrets", icon: <ShieldCheck size={16} /> },
+  { id: "Security", label: "Security & Secrets", icon: <ShieldAlert size={16} /> },
+  { id: "OWASP", label: "OWASP Mobile Top 10", icon: <ShieldCheck size={16} /> },
+  { id: "Strings", label: "Bytecode Strings", icon: <Search size={16} /> },
   { id: "Signing", label: "Certificate & Signing", icon: <KeyRound size={16} /> },
   { id: "Technology", label: "Technology Stack", icon: <Zap size={16} /> },
-  { id: "Reports", label: "Reports & SARIF", icon: <FileText size={16} /> },
+  { id: "Reports", label: "Reports & Exports", icon: <FileText size={16} /> },
 ];
 
 export default function APKLens() {
@@ -130,6 +138,30 @@ export default function APKLens() {
     const a = document.createElement("a");
     a.href = url;
     a.download = `${analysis.fileName.replace(/\.apk$/i, "")}.sarif`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadMarkdownFile() {
+    if (!analysis) return;
+    const md = generateMarkdownReport(analysis);
+    const blob = new Blob([md], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${analysis.fileName.replace(/\.apk$/i, "")}-security-audit.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadCSVFile() {
+    if (!analysis) return;
+    const csv = generateCSVFindings(analysis);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${analysis.fileName.replace(/\.apk$/i, "")}-findings.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -396,11 +428,14 @@ export default function APKLens() {
                 />
               )}
               {tab === "Components" && <Components analysis={analysis} />}
+              {tab === "DeepLinks" && <DeepLinksView analysis={analysis} />}
               {tab === "Code" && <CodeView analysis={analysis} apkFile={currentFile} />}
               {tab === "Native" && <NativeView analysis={analysis} />}
               {tab === "Resources" && <ResourceView analysis={analysis} />}
               {tab === "Network" && <NetworkView analysis={analysis} />}
               {tab === "Security" && <SecurityView analysis={analysis} />}
+              {tab === "OWASP" && <OWASPView analysis={analysis} />}
+              {tab === "Strings" && <StringSweeperView analysis={analysis} />}
               {tab === "Signing" && <SigningView analysis={analysis} />}
               {tab === "Technology" && (
                 <ListView
@@ -414,6 +449,8 @@ export default function APKLens() {
                   analysis={analysis}
                   downloadJSON={downloadJSON}
                   downloadSarif={downloadSarifFile}
+                  downloadMarkdown={downloadMarkdownFile}
+                  downloadCSV={downloadCSVFile}
                 />
               )}
             </>
@@ -1464,14 +1501,312 @@ function SigningView({ analysis }: { analysis: APKAnalysis }) {
   );
 }
 
+function DeepLinksView({ analysis }: { analysis: APKAnalysis }) {
+  const [filter, setFilter] = useState("");
+  const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
+
+  const list = (analysis.deepLinks || []).filter(
+    (dl) =>
+      dl.uri.toLowerCase().includes(filter.toLowerCase()) ||
+      dl.activity.toLowerCase().includes(filter.toLowerCase()) ||
+      dl.scheme.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  function copy(text: string, id: string) {
+    navigator.clipboard.writeText(text);
+    setCopiedCmd(id);
+    setTimeout(() => setCopiedCmd(null), 2000);
+  }
+
+  return (
+    <div className="panel full">
+      <div className="panel-title">
+        Deep Links & Custom URI Schemes <span>{analysis.deepLinks?.length || 0} endpoints</span>
+      </div>
+      <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px" }}>
+        Auditing all browsable URI schemes and deep links declared in AndroidManifest.xml. These endpoints can be triggered by external web pages and malicious applications.
+      </p>
+
+      <div className="search" style={{ marginBottom: "16px" }}>
+        <Search size={15} />
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter deep links by scheme, host, or activity..."
+        />
+      </div>
+
+      {list.length > 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {list.map((dl, i) => (
+            <div
+              key={i}
+              style={{
+                background: "rgba(15, 23, 42, 0.4)",
+                border: "1px solid var(--border-glass)",
+                borderRadius: "12px",
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span
+                    style={{
+                      background: "rgba(99, 102, 241, 0.15)",
+                      color: "#818cf8",
+                      border: "1px solid rgba(99, 102, 241, 0.3)",
+                      padding: "3px 10px",
+                      borderRadius: "6px",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {dl.scheme}://
+                  </span>
+                  <b style={{ fontFamily: "var(--font-mono)", fontSize: "13.5px", color: "#ffffff" }}>
+                    {dl.uri}
+                  </b>
+                </div>
+
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  {dl.isBrowsable && (
+                    <span className="component-badge exported">Browsable</span>
+                  )}
+                  <button
+                    className="secondary"
+                    onClick={() => copy(dl.adbCommand, `adb-${i}`)}
+                    style={{ padding: "4px 10px", fontSize: "11.5px" }}
+                  >
+                    {copiedCmd === `adb-${i}` ? <Check size={12} /> : <Copy size={12} />}
+                    <span>{copiedCmd === `adb-${i}` ? "Copied ADB!" : "Copy ADB PoC"}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                Target Activity: <code style={{ color: "#38bdf8", fontFamily: "var(--font-mono)" }}>{dl.activity}</code>
+              </div>
+
+              <div
+                style={{
+                  background: "#03060d",
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "11.5px",
+                  color: "#94a3b8",
+                  overflowX: "auto",
+                  border: "1px solid rgba(255, 255, 255, 0.05)",
+                }}
+              >
+                {dl.adbCommand}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="empty">
+          No deep links or custom URI schemes matched your criteria.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OWASPView({ analysis }: { analysis: APKAnalysis }) {
+  const categories = useMemo(() => mapToOWASPTop10(analysis), [analysis]);
+  const failCount = categories.filter((c) => c.status === "fail").length;
+  const warnCount = categories.filter((c) => c.status === "warn").length;
+  const passCount = categories.filter((c) => c.status === "pass").length;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* Scorecard Header */}
+      <div className="panel full" style={{ padding: "20px 24px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "16px" }}>
+          <div>
+            <div style={{ fontSize: "18px", fontWeight: 800, color: "#ffffff", marginBottom: "4px" }}>
+              OWASP Mobile Top 10 (2024 / MASVS) Compliance Matrix
+            </div>
+            <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+              Official mobile security compliance framework mapping for Android applications.
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "12px" }}>
+            <span style={{ padding: "6px 14px", borderRadius: "10px", background: "rgba(239, 68, 68, 0.12)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.3)", fontSize: "12px", fontWeight: 700 }}>
+              {failCount} FAILED
+            </span>
+            <span style={{ padding: "6px 14px", borderRadius: "10px", background: "rgba(245, 158, 11, 0.12)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.3)", fontSize: "12px", fontWeight: 700 }}>
+              {warnCount} WARNINGS
+            </span>
+            <span style={{ padding: "6px 14px", borderRadius: "10px", background: "rgba(52, 211, 153, 0.12)", color: "#34d399", border: "1px solid rgba(52, 211, 153, 0.3)", fontSize: "12px", fontWeight: 700 }}>
+              {passCount} PASSED
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 10 Categories Grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: "16px" }}>
+        {categories.map((cat) => (
+          <div
+            key={cat.id}
+            style={{
+              background: "var(--bg-card)",
+              border: `1px solid ${cat.status === "fail" ? "rgba(239, 68, 68, 0.35)" : cat.status === "warn" ? "rgba(245, 158, 11, 0.35)" : "var(--border-glass)"}`,
+              borderRadius: "16px",
+              padding: "20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span
+                  style={{
+                    background: "rgba(255, 255, 255, 0.05)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "12px",
+                    fontWeight: 800,
+                    padding: "3px 8px",
+                    borderRadius: "6px",
+                    color: "#ffffff",
+                  }}
+                >
+                  {cat.id}
+                </span>
+                <b style={{ color: "#ffffff", fontSize: "14.5px" }}>{cat.name}</b>
+              </div>
+              <span
+                className={`component-badge ${
+                  cat.status === "fail" ? "exported" : cat.status === "warn" ? "default" : "private"
+                }`}
+                style={{
+                  background: cat.status === "fail" ? "rgba(239, 68, 68, 0.18)" : cat.status === "warn" ? "rgba(245, 158, 11, 0.18)" : "rgba(52, 211, 153, 0.18)",
+                  color: cat.status === "fail" ? "#f87171" : cat.status === "warn" ? "#fbbf24" : "#34d399",
+                }}
+              >
+                {cat.status.toUpperCase()}
+              </span>
+            </div>
+
+            <div style={{ fontSize: "12.5px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+              {cat.description}
+            </div>
+
+            {/* Findings List */}
+            <div style={{ background: "rgba(0, 0, 0, 0.3)", borderRadius: "8px", padding: "10px 12px", fontSize: "12px" }}>
+              <b style={{ color: "#cbd5e1", display: "block", marginBottom: "4px" }}>Audit Evidence:</b>
+              {cat.findings.length ? (
+                <ul style={{ margin: 0, paddingLeft: "16px", color: "#94a3b8" }}>
+                  {cat.findings.map((f, i) => (
+                    <li key={i} style={{ marginBottom: "2px" }}>{f}</li>
+                  ))}
+                </ul>
+              ) : (
+                <span style={{ color: "#34d399" }}>No vulnerabilities detected for this category.</span>
+              )}
+            </div>
+
+            {/* Remediation */}
+            <div style={{ fontSize: "12px", color: "#818cf8", lineHeight: 1.4 }}>
+              <b>Remediation:</b> {cat.remediation}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StringSweeperView({ analysis }: { analysis: APKAnalysis }) {
+  const [filter, setFilter] = useState("");
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  const list = useMemo(() => {
+    const raw = analysis.strings || [];
+    if (!filter.trim()) return raw.slice(0, 400);
+    return raw.filter((s) => s.toLowerCase().includes(filter.toLowerCase())).slice(0, 400);
+  }, [analysis.strings, filter]);
+
+  function copy(str: string, index: number) {
+    navigator.clipboard.writeText(str);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
+  }
+
+  return (
+    <div className="panel full">
+      <div className="panel-title">
+        DEX Bytecode String Pool Sweeper <span>{analysis.strings?.length || 0} unique strings</span>
+      </div>
+      <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "16px" }}>
+        Examines strings extracted from Dalvik Executable (DEX) header tables across all compiled classes.
+      </p>
+
+      <div className="search" style={{ marginBottom: "16px" }}>
+        <Search size={15} />
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Search strings (endpoints, internal tags, method signatures, keys)..."
+        />
+      </div>
+
+      <div style={{ maxHeight: "560px", overflowY: "auto" }}>
+        {list.length ? (
+          list.map((str, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: i % 2 === 0 ? "rgba(255, 255, 255, 0.015)" : "transparent",
+                borderBottom: "1px solid rgba(255, 255, 255, 0.03)",
+                fontFamily: "var(--font-mono)",
+                fontSize: "12px",
+                color: "#cbd5e1",
+              }}
+            >
+              <span style={{ wordBreak: "break-all", marginRight: "12px" }}>{str}</span>
+              <button
+                className="secondary"
+                onClick={() => copy(str, i)}
+                style={{ padding: "3px 8px", fontSize: "11px", flexShrink: 0 }}
+              >
+                {copiedIndex === i ? <Check size={11} /> : <Copy size={11} />}
+              </button>
+            </div>
+          ))
+        ) : (
+          <div className="empty">No matching bytecode strings found.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Reports({
   analysis,
   downloadJSON,
   downloadSarif,
+  downloadMarkdown,
+  downloadCSV,
 }: {
   analysis: APKAnalysis;
   downloadJSON: () => void;
   downloadSarif: () => void;
+  downloadMarkdown: () => void;
+  downloadCSV: () => void;
 }) {
   return (
     <div className="panel full">
@@ -1490,6 +1825,12 @@ function Reports({
           style={{ padding: "10px 18px" }}
         >
           <FileText size={16} /> Print / Save Executive PDF Assessment
+        </button>
+        <button className="secondary" onClick={downloadMarkdown} style={{ padding: "10px 18px" }}>
+          <FileText size={16} /> Bug Bounty Markdown Report (.md)
+        </button>
+        <button className="secondary" onClick={downloadCSV} style={{ padding: "10px 18px" }}>
+          <Download size={16} /> Export Findings CSV (.csv)
         </button>
         <button className="secondary" onClick={downloadJSON} style={{ padding: "10px 18px" }}>
           <Code2 size={16} /> Download Raw JSON Analysis

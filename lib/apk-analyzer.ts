@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import type { APKAnalysis, APKFile } from "@/types/apk";
+import type { APKAnalysis, APKFile, DeepLinkInfo } from "@/types/apk";
 import { decodeAxml, isBinaryAxml, type DecodedManifest } from "@/lib/axml-parser";
 import { parseV1Signature, parseV2V3Signature, type APKCertificate } from "@/lib/apk-signer";
 import { parseDex } from "@/lib/dex-parser";
@@ -74,6 +74,49 @@ function parseManifest(xml: string): DecodedManifest {
     allowBackup: app ? attr(app, "allowBackup") : null,
     usesCleartextTraffic: app ? attr(app, "usesCleartextTraffic") : null
   };
+}
+
+function extractDeepLinks(xml: string, pkg: string | null): DeepLinkInfo[] {
+  try {
+    const doc = new DOMParser().parseFromString(xml, "application/xml");
+    const deepLinks: DeepLinkInfo[] = [];
+    const activities = doc.querySelectorAll("activity, activity-alias");
+
+    for (const act of activities) {
+      const actName = normalizeComponentName(attr(act, "name"), pkg);
+      const filters = act.querySelectorAll("intent-filter");
+
+      for (const filter of filters) {
+        const categories = [...filter.querySelectorAll("category")].map((c) => attr(c, "name"));
+        const isBrowsable = categories.some((c) => c?.includes("BROWSABLE"));
+        const dataNodes = filter.querySelectorAll("data");
+
+        for (const data of dataNodes) {
+          const scheme = attr(data, "scheme");
+          if (scheme) {
+            const host = attr(data, "host");
+            const path = attr(data, "path") || attr(data, "pathPrefix") || attr(data, "pathPattern") || "";
+            const uri = `${scheme}://${host ? host : ""}${path}`;
+            const adbCommand = `adb shell am start -W -a android.intent.action.VIEW -d "${uri}" ${pkg || ""}`.trim();
+
+            deepLinks.push({
+              scheme,
+              host: host || null,
+              path: path || null,
+              activity: actName,
+              isBrowsable,
+              uri,
+              adbCommand,
+            });
+          }
+        }
+      }
+    }
+
+    return deepLinks;
+  } catch (e) {
+    return [];
+  }
 }
 
 async function extractAppIcon(zip: JSZip): Promise<string | null> {
@@ -298,6 +341,16 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
     });
   }
 
+  // Extract deep links and URI schemes
+  const deepLinks = manifestXml ? extractDeepLinks(manifestXml, manifest.packageName) : [];
+  if (deepLinks.length > 0) {
+    findings.push({
+      severity: "info",
+      title: `${deepLinks.length} Deep Links / Custom URL Schemes Detected`,
+      evidence: deepLinks.map(d => `${d.uri} -> ${d.activity}`).join("; "),
+    });
+  }
+
   // Append SAST Secret Findings
   for (const s of secrets) {
     findings.push({
@@ -324,9 +377,11 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
     services: manifest.services,
     receivers: manifest.receivers,
     providers: manifest.providers,
+    deepLinks,
     urls: unique(urls),
     domains,
     webViews: unique(webViews),
+    strings: unique(allCollectedStrings).slice(0, 12000),
     technologies: [...technologies],
     dexFiles,
     nativeLibraries,
