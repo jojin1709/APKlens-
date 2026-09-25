@@ -1,56 +1,44 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%">
   <defs>
-    <!-- Background Canvas: Deep Obsidian / Charcoal like Bionic & Proton -->
+    <!-- Background Gradient -->
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0c0e15"/>
+      <stop offset="0%" stop-color="#090b10"/>
       <stop offset="100%" stop-color="#121622"/>
     </linearGradient>
 
-    <!-- Electric Cyan Gradient -->
+    <!-- Inset Rim Bevel -->
+    <linearGradient id="rim" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.03"/>
+    </linearGradient>
+
+    <!-- Electric Cyan Gradient for Aperture -->
     <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#00f5ff"/>
       <stop offset="100%" stop-color="#00a2ff"/>
     </linearGradient>
-
-    <!-- Vivid Purple Gradient like Burp & Proton -->
-    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#b066ff"/>
-      <stop offset="100%" stop-color="#6d28d9"/>
-    </linearGradient>
-
-    <!-- Bevel Rim Highlight -->
-    <linearGradient id="rim" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.2"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.02"/>
-    </linearGradient>
   </defs>
 
-  <!-- Squircle Base with 1px top highlight -->
+  <!-- Deep Obsidian Squircle Base -->
   <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#bg)"/>
   <rect x="4.5" y="4.5" width="119" height="119" rx="27.5" fill="none" stroke="url(#rim)" stroke-width="1.5"/>
 
-  <!-- Android Antennae (Bold angled vector capsules) -->
-  <line x1="44" y1="36" x2="33" y2="19" stroke="url(#cyanGrad)" stroke-width="6.5" stroke-linecap="round"/>
-  <line x1="84" y1="36" x2="95" y2="19" stroke="url(#cyanGrad)" stroke-width="6.5" stroke-linecap="round"/>
+  <!-- Android Antennae (Official #3DDC84 Green) -->
+  <line x1="44" y1="52" x2="31" y2="30" stroke="#3DDC84" stroke-width="6" stroke-linecap="round"/>
+  <line x1="84" y1="52" x2="97" y2="30" stroke="#3DDC84" stroke-width="6" stroke-linecap="round"/>
 
-  <!-- Outer Lens Ring (Pure Solid White - ultra readable on small taskbars & tabs) -->
-  <circle cx="64" cy="69" r="32" fill="none" stroke="#ffffff" stroke-width="7.5"/>
+  <!-- Android Robot Head Dome (Official #3DDC84 Green) -->
+  <path d="M 25 82.5 A 39 39 0 0 1 103 82.5 Z" fill="#3DDC84"/>
 
-  <!-- Precision Aperture Iris Blades (Geometric Security Prism) -->
-  <!-- Top Right Blade (Electric Cyan) -->
-  <path d="M64 44 C76 44 87 53 89 65 L64 69 Z" fill="url(#cyanGrad)"/>
+  <!-- Left Classic Android Eye -->
+  <circle cx="45" cy="65" r="4.2" fill="#ffffff"/>
 
-  <!-- Bottom Blade (Vivid Royal Purple) -->
-  <path d="M89 65 C88 79 78 89 64 91 L64 69 Z" fill="url(#purpleGrad)"/>
-
-  <!-- Left Blade (Cobalt / Indigo) -->
-  <path d="M64 91 C50 89 40 78 39 65 L64 69 Z" fill="#2563eb"/>
-
-  <!-- Top Left Blade (Teal / Emerald) -->
-  <path d="M39 65 C41 53 51 44 64 44 L64 69 Z" fill="#00e5a3"/>
-
-  <!-- Inner Focal Lens Core (Dark Void + White Optical Point) -->
-  <circle cx="64" cy="69" r="13" fill="#0c0e15" stroke="#ffffff" stroke-width="2.5"/>
-  <circle cx="64" cy="69" r="6" fill="url(#cyanGrad)"/>
-  <circle cx="66" cy="67" r="2" fill="#ffffff"/>
+  <!-- Right Eye: APKLens Optical Camera Aperture -->
+  <!-- Outer Aperture Ring -->
+  <circle cx="81.5" cy="65" r="12" fill="#090b10" stroke="#ffffff" stroke-width="2.4"/>
+  <!-- Cyan Precision Aperture Ring -->
+  <circle cx="81.5" cy="65" r="8.5" fill="none" stroke="url(#cyanGrad)" stroke-width="1.6"/>
+  <!-- Center Pupil & Lens Glint -->
+  <circle cx="81.5" cy="65" r="3.2" fill="url(#cyanGrad)"/>
+  <circle cx="82.6" cy="63.9" r="1.1" fill="#ffffff"/>
 </svg>

@@ -1,5 +1,9 @@
 <div align="center">
 
+<a href="https://apklens-in.vercel.app/">
+  <img src="public/icon.png" width="128" height="128" alt="APKLens Logo" />
+</a>
+
 # APKLens
 
 ### Autonomous, Privacy-First Browser-Based Android APK Inspector & Security Suite
@@ -169,9 +173,9 @@ Before opening a pull request:
 
 ## License
 
-Copyright (c) 2026 **JOJIN JOHN**. All rights reserved.
+Distributed under the **MIT License**. See [LICENSE](LICENSE) for full details.
 
-The hosted application is available for public security testing, research, and analysis at **[https://apklens-in.vercel.app/](https://apklens-in.vercel.app/)**. Full terms in [LICENSE](LICENSE).
+Copyright (c) 2026 **JOJIN JOHN**.
 
 ---
 
@@ -195,6 +199,12 @@ Android 14/15 bytecode compatibility, OWASP MASTG vulnerability checks, JADX dec
 <a href="https://www.linkedin.com/in/jojin-john/"><img src="https://img.shields.io/badge/Connect_on_LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn"></a>
 
 <br/><br/>
+
+<a href="https://www.linkedin.com/in/jojin-john/">
+  <img src="public/jojin.png" width="72" height="72" style="border-radius: 50%;" alt="Jojin John" />
+</a>
+
+<br/>
 
 **Developed by [JOJIN JOHN](https://www.linkedin.com/in/jojin-john/)** · [GitHub](https://github.com/jojin1709) · [LinkedIn](https://www.linkedin.com/in/jojin-john/) · [Sponsor](https://github.com/sponsors/jojin1709)
 

@@ -5,7 +5,8 @@ import {
   Shield, Lock, Zap, Code2, Cpu, FileText, CheckCircle2, ArrowRight,
   Upload, Layers, Eye, ShieldCheck, Check, Laptop, FileCode,
   Download, ArrowUpRight, Linkedin, Github, Heart, Link as LinkIcon,
-  Search, Terminal, Database, Key, Sparkles, ChevronDown, CheckCircle, XCircle
+  Search, Terminal, Database, Key, Sparkles, ChevronDown, CheckCircle, XCircle,
+  Copy, CheckCheck
 } from "lucide-react";
 
 interface LandingPageProps {
@@ -17,6 +18,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
   const [dragActive, setDragActive] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [selectedOrbitModule, setSelectedOrbitModule] = useState<number>(0);
+  const [copiedCmd, setCopiedCmd] = useState(false);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -29,70 +31,92 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
     }
   };
 
+  const copyCommand = () => {
+    navigator.clipboard.writeText("npx apklens@latest inspect ./app-release.apk");
+    setCopiedCmd(true);
+    setTimeout(() => setCopiedCmd(false), 2000);
+  };
+
   const orbitModules = [
     {
       id: 0,
       name: "AXML Manifest Engine",
-      tag: "Manifest Decoder",
-      icon: <Layers size={20} className="text-cyan" />,
+      short: "AXML Decoder",
+      tag: "Binary Decoder",
+      icon: <Layers size={18} className="text-cyan" />,
       desc: "Decodes binary compiled AndroidManifest.xml chunks, extracting permissions, exported components, and SDK limits.",
-      metric: "Sub-10ms Decode"
+      metric: "Sub-10ms Decode",
+      deg: 0
     },
     {
       id: 1,
       name: "Dalvik DEX Sweeper",
+      short: "DEX Sweeper",
       tag: "Bytecode Parser",
-      icon: <Code2 size={20} className="text-indigo" />,
+      icon: <Code2 size={18} className="text-indigo" />,
       desc: "Parses Multi-DEX header tables, method references, class pools, and sweeps up to 12,000 raw strings.",
-      metric: "Multi-DEX Ready"
+      metric: "Multi-DEX Ready",
+      deg: 45
     },
     {
       id: 2,
       name: "OWASP Mobile Top 10",
+      short: "OWASP 2024",
       tag: "Compliance Matrix",
-      icon: <ShieldCheck size={20} className="text-emerald" />,
+      icon: <ShieldCheck size={18} className="text-emerald" />,
       desc: "Maps security posture against official 2024 OWASP Mobile standard (M1–M10) with pass/fail telemetry.",
-      metric: "2024 MASVS Aligned"
+      metric: "2024 MASVS",
+      deg: 90
     },
     {
       id: 3,
       name: "Deep Link Hunter",
+      short: "Deep Links",
       tag: "Scheme Extractor",
-      icon: <LinkIcon size={20} className="text-blue" />,
+      icon: <LinkIcon size={18} className="text-blue" />,
       desc: "Extracts custom URL schemes and browsable intent filters with click-to-copy adb reproduction PoCs.",
-      metric: "ADB PoC Ready"
+      metric: "ADB PoC Ready",
+      deg: 135
     },
     {
       id: 4,
       name: "Secret & Key Hunter",
+      short: "Secret Hunter",
       tag: "Entropy & SAST",
-      icon: <Key size={20} className="text-amber" />,
+      icon: <Key size={18} className="text-amber" />,
       desc: "Sweeps for OpenAI API keys, AWS credentials, GitHub tokens, DB URIs, and dynamic code loading.",
-      metric: "18+ SAST Rules"
+      metric: "18+ SAST Rules",
+      deg: 180
     },
     {
       id: 5,
       name: "ELF Native Inspector",
+      short: "NDK (.so)",
       tag: "Binary Auditing",
-      icon: <Cpu size={20} className="text-purple" />,
+      icon: <Cpu size={18} className="text-purple" />,
       desc: "Audits compiled C/C++ shared libraries (.so), identifying ARM64/x86 targets and exported JNI entry points.",
-      metric: "ELF32 & ELF64"
+      metric: "ELF32 & ELF64",
+      deg: 225
     },
     {
       id: 6,
       name: "JADX AST Decompiler",
+      short: "JADX Source",
       tag: "Source Reverse Eng",
-      icon: <FileCode size={20} className="text-pink" />,
+      icon: <FileCode size={18} className="text-pink" />,
       desc: "Targeted single-class Java & Kotlin AST decompilation directly in browser memory with syntax highlighting.",
-      metric: "Java & Kotlin"
+      metric: "Java & Kotlin",
+      deg: 270
     },
     {
       id: 7,
       name: "DevSecOps & Bug Bounty",
+      short: "Bug Bounty Export",
       tag: "Report Generation",
-      icon: <FileText size={20} className="text-emerald" />,
+      icon: <FileText size={18} className="text-emerald" />,
       desc: "Export HackerOne/Bugcrowd Markdown bug bounty reports, OASIS SARIF 2.1.0, and RFC-4180 CSV findings.",
-      metric: "SARIF & Markdown"
+      metric: "SARIF & Markdown",
+      deg: 315
     }
   ];
 
@@ -135,7 +159,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
               {activeDropdown === "caps" && (
                 <div className="atomic-dd-panel open">
                   <div className="atomic-dd-links">
-                    <a href="#orbit" className="atomic-dd-link" onClick={() => setActiveDropdown(null)}>
+                    <a href="#orbit-stage" className="atomic-dd-link" onClick={() => setActiveDropdown(null)}>
                       <span className="atomic-dd-icon">
                         <LinkIcon size={18} className="text-blue" />
                       </span>
@@ -144,7 +168,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
                         <span className="sub">Browsable schemes & ADB PoCs</span>
                       </span>
                     </a>
-                    <a href="#orbit" className="atomic-dd-link" onClick={() => setActiveDropdown(null)}>
+                    <a href="#orbit-stage" className="atomic-dd-link" onClick={() => setActiveDropdown(null)}>
                       <span className="atomic-dd-icon">
                         <ShieldCheck size={18} className="text-emerald" />
                       </span>
@@ -153,7 +177,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
                         <span className="sub">2024 compliance matrix (M1–M10)</span>
                       </span>
                     </a>
-                    <a href="#orbit" className="atomic-dd-link" onClick={() => setActiveDropdown(null)}>
+                    <a href="#orbit-stage" className="atomic-dd-link" onClick={() => setActiveDropdown(null)}>
                       <span className="atomic-dd-icon">
                         <Key size={18} className="text-amber" />
                       </span>
@@ -162,7 +186,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
                         <span className="sub">Entropy, tokens & API keys</span>
                       </span>
                     </a>
-                    <a href="#orbit" className="atomic-dd-link" onClick={() => setActiveDropdown(null)}>
+                    <a href="#orbit-stage" className="atomic-dd-link" onClick={() => setActiveDropdown(null)}>
                       <span className="atomic-dd-icon">
                         <FileCode size={18} className="text-purple" />
                       </span>
@@ -176,7 +200,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
               )}
             </div>
 
-            <a href="#orbit" className="atomic-nav-link">Engines</a>
+            <a href="#orbit-stage" className="atomic-nav-link">Live Orbit</a>
             <a href="#comparison" className="atomic-nav-link">Local vs Cloud</a>
             <a href="#how-it-works" className="atomic-nav-link">How It Works</a>
             <a href="#developer" className="atomic-nav-link">Developer</a>
@@ -195,9 +219,12 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
       {/* Hero Section */}
       <section className="atomic-hero">
         <div className="atomic-hero-inner">
-          {/* Status Badge */}
+          {/* Status Badge with Ping Animation */}
           <div className="atomic-badge">
-            <span className="atomic-pulse-dot"></span>
+            <span className="atomic-pulse-wrap">
+              <span className="atomic-pulse-dot"></span>
+              <span className="atomic-pulse-ring"></span>
+            </span>
             <span>100% In-Browser Inspection • Zero Cloud Uploads • Free & Private</span>
           </div>
 
@@ -245,6 +272,20 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
             </div>
           </div>
 
+          {/* Terminal Command Bar */}
+          <div className="hero-terminal-row">
+            <div className="hero-terminal-bar" onClick={copyCommand} title="Click to copy command">
+              <Terminal size={14} className="terminal-icon" />
+              <span className="terminal-text">
+                <span className="terminal-dim">$</span> npx apklens@latest inspect ./app-release.apk
+              </span>
+              <button className="terminal-copy-btn">
+                {copiedCmd ? <CheckCheck size={14} className="text-emerald" /> : <Copy size={14} />}
+                <span>{copiedCmd ? "Copied" : "Copy"}</span>
+              </button>
+            </div>
+          </div>
+
           {/* Action Row */}
           <div className="atomic-hero-ctas">
             <button className="atomic-btn-solid is-large" onClick={onLaunch}>
@@ -264,119 +305,146 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
         </div>
       </section>
 
-      {/* Orbit Capability Interactive Stage (Inspired by Atomic Chat Model Orbit) */}
-      <section id="orbit" className="atomic-section">
+      {/* ============================================================ */}
+      {/* ATOMIC REVOLVING 3D ORBIT STAGE (Signature Atomic Chat Animation) */}
+      {/* ============================================================ */}
+      <section id="orbit-stage" className="atomic-orbit-showcase-section">
         <div className="atomic-section-header">
-          <div className="atomic-section-tag">STATIC TRIAGE ENGINE</div>
-          <h2 className="atomic-section-title">Comprehensive Mobile Security Architecture</h2>
+          <div className="atomic-section-tag">LIVE DYNAMIC ORBIT</div>
+          <h2 className="atomic-section-title">8 In-Browser Static Inspection Engines</h2>
           <p className="atomic-section-desc">
-            Click on any module to inspect how APKLens performs in-depth static analysis without server dependencies.
+            Hover over the revolving orbit or click any engine to inspect real-time static triage capabilities.
           </p>
         </div>
 
-        {/* Orbit Grid Showcase */}
-        <div className="orbit-container">
-          {/* Left: Capability List (Squircle 40px tiles like atomic.chat) */}
-          <div className="orbit-menu">
-            {orbitModules.map((mod) => (
-              <div
-                key={mod.id}
-                className={`orbit-item ${selectedOrbitModule === mod.id ? "active" : ""}`}
-                onClick={() => setSelectedOrbitModule(mod.id)}
-              >
-                <div className="orbit-tile">
-                  {mod.icon}
-                </div>
-                <div className="orbit-item-copy">
-                  <div className="orbit-item-name">{mod.name}</div>
-                  <div className="orbit-item-tag">{mod.tag}</div>
-                </div>
-                <div className="orbit-item-badge">{mod.metric}</div>
-              </div>
-            ))}
+        {/* Orbit Rotating Arena */}
+        <div className="orbit-stage-arena">
+          {/* Central Halo Glow */}
+          <div className="orbit-core-halo"></div>
+
+          {/* Concentric Orbital Tracks */}
+          <div className="orbit-track-outer">
+            {/* Inner Revolving Orbit Ring */}
+            <div className="orbit-track-inner">
+              {orbitModules.map((mod, idx) => {
+                const angleRad = (mod.deg * Math.PI) / 180;
+                // Radius in pixels for orbit circle (230px radius)
+                const radius = 230;
+                const x = Math.round(radius * Math.cos(angleRad));
+                const y = Math.round(radius * Math.sin(angleRad));
+
+                return (
+                  <div
+                    key={mod.id}
+                    className="orbit-satellite"
+                    style={{
+                      transform: `translate(${x}px, ${y}px)`
+                    }}
+                    onClick={() => setSelectedOrbitModule(mod.id)}
+                  >
+                    <div className={`satellite-pill ${selectedOrbitModule === mod.id ? "active" : ""}`}>
+                      <span className="satellite-icon">{mod.icon}</span>
+                      <span className="satellite-label">{mod.short}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Right: Focused Live Preview Stage */}
-          <div className="orbit-stage-preview">
-            <div className="stage-card">
-              <div className="stage-card-top">
-                <div className="stage-icon-box">
-                  {orbitModules[selectedOrbitModule].icon}
+          {/* Central Centerpiece Core */}
+          <div className="orbit-center-core" onClick={onLaunch}>
+            <div className="core-logo-box">
+              <img src="/icon.svg" alt="APKLens" className="core-logo-img" />
+            </div>
+            <div className="core-name">APKLens Core</div>
+            <div className="core-status">
+              <span className="atomic-pulse-dot"></span>
+              <span>Online Engine</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Selected Module Live Card Preview Below Arena */}
+        <div className="orbit-preview-wrap">
+          <div className="stage-card">
+            <div className="stage-card-top">
+              <div className="stage-icon-box">
+                {orbitModules[selectedOrbitModule].icon}
+              </div>
+              <div>
+                <div className="stage-badge">{orbitModules[selectedOrbitModule].tag}</div>
+                <h3 className="stage-title">{orbitModules[selectedOrbitModule].name}</h3>
+              </div>
+              <div className="stage-metric-badge">{orbitModules[selectedOrbitModule].metric}</div>
+            </div>
+
+            <p className="stage-desc">{orbitModules[selectedOrbitModule].desc}</p>
+
+            <div className="stage-specs">
+              {selectedOrbitModule === 0 && (
+                <div className="spec-list">
+                  <div className="spec-row"><span className="spec-k">Format:</span><span className="spec-v">Compiled Android Binary XML (AXML) Chunk Format</span></div>
+                  <div className="spec-row"><span className="spec-k">Data Extracted:</span><span className="spec-v">Package name, versionCode, minSdkVersion, permissions, exported components</span></div>
+                  <div className="spec-row"><span className="spec-k">Execution:</span><span className="spec-v">Pure TypeScript ArrayBuffer parser in Web Worker</span></div>
                 </div>
-                <div>
-                  <div className="stage-badge">{orbitModules[selectedOrbitModule].tag}</div>
-                  <h3 className="stage-title">{orbitModules[selectedOrbitModule].name}</h3>
+              )}
+              {selectedOrbitModule === 1 && (
+                <div className="spec-list">
+                  <div className="spec-row"><span className="spec-k">Bytecode Format:</span><span className="spec-v">DEX 035, DEX 037, DEX 038, Multi-DEX classes2..N.dex</span></div>
+                  <div className="spec-row"><span className="spec-k">String Pool:</span><span className="spec-v">Instant sweep of up to 12,000 raw strings with live regex search</span></div>
+                  <div className="spec-row"><span className="spec-k">Disassembly:</span><span className="spec-v">Class definitions, superclasses, interfaces, and method bytecode</span></div>
                 </div>
-              </div>
+              )}
+              {selectedOrbitModule === 2 && (
+                <div className="spec-list">
+                  <div className="spec-row"><span className="spec-k">Standard:</span><span className="spec-v">OWASP Mobile Top 10 (2024 Edition / MASVS)</span></div>
+                  <div className="spec-row"><span className="spec-k">Coverage:</span><span className="spec-v">M1 (Improper Credential Usage) through M10 (Extraneous Functionality)</span></div>
+                  <div className="spec-row"><span className="spec-k">Remediation:</span><span className="spec-v">Actionable remediation guides and security scorecards</span></div>
+                </div>
+              )}
+              {selectedOrbitModule === 3 && (
+                <div className="spec-list">
+                  <div className="spec-row"><span className="spec-k">Schemes Detected:</span><span className="spec-v">Custom URI schemes (e.g. app://), HTTP(S) App Links</span></div>
+                  <div className="spec-row"><span className="spec-k">Browsable Intent:</span><span className="spec-v">Flags high-risk attack surfaces callable from browser</span></div>
+                  <div className="spec-row"><span className="spec-k">PoC Generation:</span><span className="spec-v">One-click ADB reproduction command for device verification</span></div>
+                </div>
+              )}
+              {selectedOrbitModule === 4 && (
+                <div className="spec-list">
+                  <div className="spec-row"><span className="spec-k">Heuristics:</span><span className="spec-v">Shannon entropy calculator + high-fidelity regex signatures</span></div>
+                  <div className="spec-row"><span className="spec-k">Targets:</span><span className="spec-v">OpenAI keys, AWS credentials, GitHub PATs, Firebase DBs, Stripe, Twilio</span></div>
+                  <div className="spec-row"><span className="spec-k">Risk Masking:</span><span className="spec-v">Automatic token masking to prevent screen capture leakage</span></div>
+                </div>
+              )}
+              {selectedOrbitModule === 5 && (
+                <div className="spec-list">
+                  <div className="spec-row"><span className="spec-k">Architectures:</span><span className="spec-v">arm64-v8a, armeabi-v7a, x86, x86_64 ELF binaries</span></div>
+                  <div className="spec-row"><span className="spec-k">Symbol Analysis:</span><span className="spec-v">Exported JNI functions (Java_*), JNI_OnLoad, dynamic dependencies</span></div>
+                  <div className="spec-row"><span className="spec-k">Safety:</span><span className="spec-v">Endianness verification and section header validation</span></div>
+                </div>
+              )}
+              {selectedOrbitModule === 6 && (
+                <div className="spec-list">
+                  <div className="spec-row"><span className="spec-k">Decompiler:</span><span className="spec-v">Integrated JADX 1.5.0 AST source decompiler</span></div>
+                  <div className="spec-row"><span className="spec-k">Targeted Mode:</span><span className="spec-v">Decompiles only the selected class to prevent memory bloat</span></div>
+                  <div className="spec-row"><span className="spec-k">Telemetry:</span><span className="spec-v">Real-time percentage progress streaming over Web Worker</span></div>
+                </div>
+              )}
+              {selectedOrbitModule === 7 && (
+                <div className="spec-list">
+                  <div className="spec-row"><span className="spec-k">Bug Bounty:</span><span className="spec-v">HackerOne & Bugcrowd markdown report format (.md)</span></div>
+                  <div className="spec-row"><span className="spec-k">DevSecOps:</span><span className="spec-v">OASIS SARIF 2.1.0 JSON for GitHub & GitLab CI/CD scanning</span></div>
+                  <div className="spec-row"><span className="spec-k">Spreadsheet:</span><span className="spec-v">RFC-4180 CSV export for security tracking & Jira import</span></div>
+                </div>
+              )}
+            </div>
 
-              <p className="stage-desc">{orbitModules[selectedOrbitModule].desc}</p>
-
-              {/* Dynamic Feature Highlights based on selected module */}
-              <div className="stage-specs">
-                {selectedOrbitModule === 0 && (
-                  <div className="spec-list">
-                    <div className="spec-row"><span className="spec-k">Format:</span><span className="spec-v">Compiled Android Binary XML (AXML) Chunk Format</span></div>
-                    <div className="spec-row"><span className="spec-k">Data Extracted:</span><span className="spec-v">Package name, versionCode, minSdkVersion, permissions, exported components</span></div>
-                    <div className="spec-row"><span className="spec-k">Execution:</span><span className="spec-v">Pure TypeScript ArrayBuffer parser in Web Worker</span></div>
-                  </div>
-                )}
-                {selectedOrbitModule === 1 && (
-                  <div className="spec-list">
-                    <div className="spec-row"><span className="spec-k">Bytecode Format:</span><span className="spec-v">DEX 035, DEX 037, DEX 038, Multi-DEX classes2..N.dex</span></div>
-                    <div className="spec-row"><span className="spec-k">String Pool:</span><span className="spec-v">Instant sweep of up to 12,000 raw strings with live regex search</span></div>
-                    <div className="spec-row"><span className="spec-k">Disassembly:</span><span className="spec-v">Class definitions, superclasses, interfaces, and method bytecode</span></div>
-                  </div>
-                )}
-                {selectedOrbitModule === 2 && (
-                  <div className="spec-list">
-                    <div className="spec-row"><span className="spec-k">Standard:</span><span className="spec-v">OWASP Mobile Top 10 (2024 Edition / MASVS)</span></div>
-                    <div className="spec-row"><span className="spec-k">Coverage:</span><span className="spec-v">M1 (Improper Credential Usage) through M10 (Extraneous Functionality)</span></div>
-                    <div className="spec-row"><span className="spec-k">Remediation:</span><span className="spec-v">Actionable remediation guides and security scorecards</span></div>
-                  </div>
-                )}
-                {selectedOrbitModule === 3 && (
-                  <div className="spec-list">
-                    <div className="spec-row"><span className="spec-k">Schemes Detected:</span><span className="spec-v">Custom URI schemes (e.g. app://), HTTP(S) App Links</span></div>
-                    <div className="spec-row"><span className="spec-k">Browsable Intent:</span><span className="spec-v">Flags high-risk attack surfaces callable from browser</span></div>
-                    <div className="spec-row"><span className="spec-k">PoC Generation:</span><span className="spec-v">One-click ADB reproduction command for device verification</span></div>
-                  </div>
-                )}
-                {selectedOrbitModule === 4 && (
-                  <div className="spec-list">
-                    <div className="spec-row"><span className="spec-k">Heuristics:</span><span className="spec-v">Shannon entropy calculator + high-fidelity regex signatures</span></div>
-                    <div className="spec-row"><span className="spec-k">Targets:</span><span className="spec-v">OpenAI keys, AWS credentials, GitHub PATs, Firebase DBs, Stripe, Twilio</span></div>
-                    <div className="spec-row"><span className="spec-k">Risk Masking:</span><span className="spec-v">Automatic token masking to prevent screen capture leakage</span></div>
-                  </div>
-                )}
-                {selectedOrbitModule === 5 && (
-                  <div className="spec-list">
-                    <div className="spec-row"><span className="spec-k">Architectures:</span><span className="spec-v">arm64-v8a, armeabi-v7a, x86, x86_64 ELF binaries</span></div>
-                    <div className="spec-row"><span className="spec-k">Symbol Analysis:</span><span className="spec-v">Exported JNI functions (Java_*), JNI_OnLoad, dynamic dependencies</span></div>
-                    <div className="spec-row"><span className="spec-k">Safety:</span><span className="spec-v">Endianness verification and section header validation</span></div>
-                  </div>
-                )}
-                {selectedOrbitModule === 6 && (
-                  <div className="spec-list">
-                    <div className="spec-row"><span className="spec-k">Decompiler:</span><span className="spec-v">Integrated JADX 1.5.0 AST source decompiler</span></div>
-                    <div className="spec-row"><span className="spec-k">Targeted Mode:</span><span className="spec-v">Decompiles only the selected class to prevent memory bloat</span></div>
-                    <div className="spec-row"><span className="spec-k">Telemetry:</span><span className="spec-v">Real-time percentage progress streaming over Web Worker</span></div>
-                  </div>
-                )}
-                {selectedOrbitModule === 7 && (
-                  <div className="spec-list">
-                    <div className="spec-row"><span className="spec-k">Bug Bounty:</span><span className="spec-v">HackerOne & Bugcrowd markdown report format (.md)</span></div>
-                    <div className="spec-row"><span className="spec-k">DevSecOps:</span><span className="spec-v">OASIS SARIF 2.1.0 JSON for GitHub & GitLab CI/CD scanning</span></div>
-                    <div className="spec-row"><span className="spec-k">Spreadsheet:</span><span className="spec-v">RFC-4180 CSV export for security tracking & Jira import</span></div>
-                  </div>
-                )}
-              </div>
-
-              <div className="stage-actions">
-                <button className="atomic-btn-solid" onClick={onLaunch}>
-                  <span>Try With Your APK</span>
-                  <ArrowRight size={14} />
-                </button>
-              </div>
+            <div className="stage-actions">
+              <button className="atomic-btn-solid" onClick={onLaunch}>
+                <span>Inspect With Your APK</span>
+                <ArrowRight size={14} />
+              </button>
             </div>
           </div>
         </div>
@@ -592,7 +660,13 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
           <div className="dev-card-inner">
             <div className="dev-top-row">
               <div className="dev-avatar-box">
-                <Shield size={28} className="text-indigo" />
+                <img
+                  src="/jojin.png"
+                  alt="Jojin John"
+                  className="dev-avatar-img"
+                  width={64}
+                  height={64}
+                />
               </div>
               <div>
                 <div className="dev-status-pill">

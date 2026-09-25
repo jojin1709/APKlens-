@@ -195,12 +195,11 @@ export default function APKLens() {
 
   return (
     <main className="shell">
-      {/* Dynamic Ambient Background Orbs */}
-      <div className="ambient-bg">
-        <div className="aurora-orb orb-1"></div>
-        <div className="aurora-orb orb-2"></div>
-        <div className="aurora-orb orb-3"></div>
-        <div className="ambient-grid"></div>
+      {/* Background Ambience - Atomic Black */}
+      <div className="atomic-bg-canvas" aria-hidden="true">
+        <div className="atomic-radial-top"></div>
+        <div className="atomic-radial-bottom"></div>
+        <div className="atomic-mesh-grid"></div>
       </div>
 
       {/* Topbar */}
@@ -229,10 +228,14 @@ export default function APKLens() {
             target="_blank"
             rel="noopener noreferrer"
             className="nav-tab-btn"
-            style={{ textDecoration: "none", gap: "6px" }}
-            title="Developer LinkedIn Profile"
+            style={{ textDecoration: "none", gap: "8px", padding: "4px 10px 4px 6px" }}
+            title="Developer: Jojin John (LinkedIn Profile)"
           >
-            <Linkedin size={13} style={{ color: "#60a5fa" }} />
+            <img
+              src="/jojin.png"
+              alt="Jojin John"
+              style={{ width: "20px", height: "20px", borderRadius: "50%", objectFit: "cover", border: "1.5px solid rgba(61, 220, 132, 0.45)" }}
+            />
             <span>Jojin John</span>
           </a>
           <div className="privacy-badge">
