@@ -497,7 +497,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
             <span>• Next-Gen Android Security & Architecture Platform</span>
           </div>
           <div className="footer-copy">
-            © 2026 JOJIN JOHN. All Rights Reserved. APKLens Platform.
+            © 2026 JOJIN JOHN. All Rights Reserved. • <a href="https://github.com/sponsors/jojin1709" target="_blank" rel="noopener noreferrer" style={{ color: "#f472b6", textDecoration: "none", fontWeight: 600 }}>❤️ Sponsor on GitHub</a>
           </div>
         </div>
       </footer>

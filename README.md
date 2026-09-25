@@ -176,19 +176,22 @@ The hosted application is available for public security testing, research, and a
 
 ## Support
 
-Free and open-source for the security and developer community. If APKLens saves you time, ⭐ **star the repo** — it helps others discover the project.
+Free and open-source for the security and developer community. If it saves you time, ⭐ **star the repo** — it helps others discover the project.
 
 <div align="center">
 
-### ❤️ Developed by jojin1709
+### ❤️ Sponsor jojin1709
 
-<a href="https://github.com/jojin1709"><img src="https://img.shields.io/badge/GitHub-jojin1709-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub jojin1709" height="32"></a>&nbsp;
-<a href="https://apklens-in.vercel.app/"><img src="https://img.shields.io/badge/Launch_App-apklens--in.vercel.app-6366F1?style=for-the-badge&logo=vercel&logoColor=white" alt="Launch App"></a>
+<a href="https://github.com/sponsors/jojin1709"><img src="https://img.shields.io/badge/GitHub_Sponsors-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Sponsor on GitHub" height="32"></a>&nbsp;
+<a href="https://github.com/sponsors/jojin1709"><img src="https://img.shields.io/badge/Become_a_Sponsor-EA4AAA?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="Become a Sponsor"></a>
 
-<br/><br/>
+Sponsorship keeps APKLens actively maintained: in-browser binary AXML parsing updates,
+Android 14/15 bytecode compatibility, OWASP MASTG vulnerability checks, JADX decompilation services, and compliance reporting.
 
-<a href="https://github.com/jojin1709/APKlens-/stargazers"><img src="https://img.shields.io/badge/⭐_Star_on_GitHub-6366F1?style=for-the-badge&logo=github&logoColor=white" alt="Star on GitHub"></a>
+<br/>
 
-**Designed & Built by JOJIN JOHN**
+<a href="https://github.com/jojin1709/APKlens-/stargazers"><img src="https://img.shields.io/badge/⭐_Star-6366F1?style=for-the-badge&logo=github&logoColor=white" alt="Star on GitHub"></a>
+
+**Developed by JOJIN JOHN**
 
 </div>
