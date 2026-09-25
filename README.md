@@ -105,30 +105,56 @@ X.509 certificate parsing, and automated vulnerability scanning with zero server
 
 ## Architecture & How It Works
 
-`mermaid
-flowchart TD
-    A["User selects .apk file"] --> B["Browser File API / ArrayBuffer Sandbox"]
-    B --> C["Web Crypto API: SHA-256 Fingerprint"]
-    B --> D["JSZip In-Memory Stream Decompression"]
-    D --> E["Extract File Manifest & Sizes"]
-    D --> F["Dalvik DEX Class & Method Inspector"]
-    D --> G["Binary AXML Chunk Parser"]
-    B --> H["X.509 ASN.1 Certificate Parser"]
-    F --> I["Printable Strings & Endpoint Extraction"]
-    F --> J["Framework & Library Signatures"]
-    G --> K["Permissions & Component Export Audit"]
-    G --> L["Security Indicators & Misconfigurations"]
-    C --> M["APKLens Reactive State Engine"]
-    E --> M
-    H --> M
-    I --> M
-    J --> M
-    K --> M
-    L --> M
-    M --> N["Interactive Web UI: apklens-in.vercel.app"]
-    M --> O["IndexedDB Local Session Vault"]
-    M --> P["Export SARIF 2.1.0 & PDF Report"]
-`
+```mermaid
+flowchart TB
+    subgraph Client ["Client-Side Browser Sandbox (100% Private)"]
+        APK["User APK File"] --> Reader["Browser File API / ArrayBuffer"]
+        Reader --> SHA["Web Crypto SHA-256 Fingerprint"]
+        Reader --> Unpack["JSZip In-Memory Stream Unpacker"]
+
+        subgraph Decoders ["Static Analysis Pipeline"]
+            Unpack --> AXML["Binary AXML Parser<br/>AndroidManifest.xml"]
+            Unpack --> DEX["Dalvik DEX Inspector<br/>Multi-DEX Classes & Methods"]
+            Unpack --> CERT["ASN.1 Certificate Engine<br/>v1 / v2 / v3 Signatures"]
+            Unpack --> ELF["ELF Native Library Auditor<br/>.so Dynamic Symbols & JNI"]
+
+            DEX --> STR["Bytecode String & Secret Hunter<br/>AWS, GCP, Firebase, Entropy"]
+            DEX --> TECH["Technology Fingerprinter<br/>Flutter, React Native, Jetpack"]
+            AXML --> COMP["Component & Permission Auditor<br/>Activities, Services, Providers"]
+            AXML --> DEEP["Deep Links & Browsable Schemes"]
+        end
+
+        subgraph Engine ["APKLens Reactive Core"]
+            SHA --> Core["Reactive State & Scoring Engine"]
+            COMP --> Core
+            DEEP --> Core
+            STR --> Core
+            TECH --> Core
+            CERT --> Core
+            ELF --> Core
+            Core --> OWASP["OWASP Mobile Top 10 Risk Mapper"]
+        end
+
+        subgraph Presentation ["Presentation & Persistence"]
+            Core --> UI["15-Module Dark Glassmorphism UI"]
+            Core --> Vault["IndexedDB Local Session Vault"]
+            Core --> Reports["OASIS SARIF 2.1.0 & Executive PDF Reports"]
+        end
+    end
+
+    subgraph Backend ["Isolated Cloud Container (Optional)"]
+        DEX -.->|"On-Demand Single Class"| JADX["JADX Decompiler API<br/>Fast C1 JIT Engine"]
+        JADX -.->|"Java / Kotlin AST Source"| UI
+    end
+
+    classDef primary fill:#08080a,stroke:#3DDC84,stroke-width:2px,color:#fff
+    classDef secondary fill:#121217,stroke:#27272a,stroke-width:1px,color:#e4e4e7
+    classDef accent fill:#112419,stroke:#3DDC84,stroke-width:1.5px,color:#3DDC84
+
+    class APK,Core,UI,JADX primary
+    class Reader,SHA,Unpack,Vault,Reports secondary
+    class AXML,DEX,CERT,ELF,STR,TECH,COMP,DEEP,OWASP accent
+```
 
 ---
 

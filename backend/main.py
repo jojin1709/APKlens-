@@ -54,24 +54,66 @@ def decompile_class_info():
 
 import hashlib
 
+CACHE_DIR = Path("/tmp/apklens_cache")
+try:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
+
 class_cache: dict[str, str] = {}
 
 @app.post("/api/decompile-class")
 async def decompile_class(
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
+    fileHash: Optional[str] = Form(None),
     className: str = Form(...),
 ):
     """
-    Decompile a single target class from uploaded classes.dex or .apk file.
-    Ultra-fast single-threaded compilation with strict memory bounds and in-memory cache.
+    Decompile a single target class from uploaded .apk or classes.dex file.
+    Ultra-optimized single-class compilation with C1 JIT, disk blob caching, and memory bounds.
     """
     # Normalize class name: e.g. "Lcom/android/insecurebankv2/PostLogin;" -> "com.android.insecurebankv2.PostLogin"
     clean_class = className.strip().lstrip("L").rstrip(";").replace("/", ".")
-    
-    file_bytes = await file.read()
-    file_hash = hashlib.sha256(file_bytes).hexdigest()
-    cache_key = f"{file_hash}:{clean_class}"
 
+    target_apk_path = None
+    target_hash = fileHash.strip() if fileHash else None
+
+    # Check if binary is already cached on disk by fileHash
+    if target_hash:
+        cached_file_path = CACHE_DIR / f"{target_hash}.bin"
+        if cached_file_path.exists() and cached_file_path.stat().st_size > 0:
+            target_apk_path = str(cached_file_path)
+
+    temp_created_path = None
+    # If not on disk by hash, read uploaded file
+    if not target_apk_path:
+        if not file:
+            raise HTTPException(
+                status_code=400,
+                detail="Binary source file not found on server. Please include the 'file' payload."
+            )
+        file_bytes = await file.read()
+        if not file_bytes:
+            raise HTTPException(status_code=400, detail="Empty file payload received.")
+
+        computed_hash = hashlib.sha256(file_bytes).hexdigest()
+        target_hash = target_hash or computed_hash
+        cached_file_path = CACHE_DIR / f"{target_hash}.bin"
+
+        try:
+            with open(cached_file_path, "wb") as f:
+                f.write(file_bytes)
+            target_apk_path = str(cached_file_path)
+        except Exception:
+            # Fallback to temp file if cache dir write fails
+            temp_f = tempfile.NamedTemporaryFile(delete=False, suffix=".apk")
+            temp_f.write(file_bytes)
+            temp_f.close()
+            target_apk_path = temp_f.name
+            temp_created_path = target_apk_path
+
+    # Check memory cache for already decompiled class
+    cache_key = f"{target_hash}:{clean_class}"
     if cache_key in class_cache:
         return {
             "className": clean_class,
@@ -81,34 +123,32 @@ async def decompile_class(
 
     temp_dir = tempfile.mkdtemp(prefix="apklens_jadx_")
     try:
-        input_filename = file.filename or "classes.dex"
-        input_path = os.path.join(temp_dir, input_filename)
-        
-        with open(input_path, "wb") as f:
-            f.write(file_bytes)
-
         target_file = os.path.join(temp_dir, "decompiled.java")
-        
-        # Configure JVM memory ceiling to avoid container OOM/thrashing on Render free tier
-        jadx_env = os.environ.copy()
-        jadx_env["JAVA_OPTS"] = "-Xmx384m -XX:+UseSerialGC -XX:CICompilerCount=2"
 
-        # Primary strategy: direct single-class extraction to target file
+        # C1 compiler mode for lightning-fast startup and minimal RAM footprint
+        jadx_env = os.environ.copy()
+        jadx_env["JAVA_OPTS"] = "-Xms64m -Xmx320m -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:CICompilerCount=1"
+
+        # Primary strategy: direct single-class extraction with high-speed flags
         cmd = [
             "jadx",
             "--no-res",
             "--no-imports",
-            "-j", "1",
+            "--show-bad-code",
+            "--no-inline-anonymous",
+            "--no-inline-methods",
+            "--comments-level", "none",
+            "-j", "2",
             "--single-class", clean_class,
             "--single-class-output", target_file,
-            input_path
+            target_apk_path
         ]
         res = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            timeout=45,
+            timeout=85,
             env=jadx_env
         )
 
@@ -117,17 +157,20 @@ async def decompile_class(
             with open(target_file, "r", encoding="utf-8", errors="replace") as f:
                 found_code = f.read()
 
-        # Secondary strategy: single-class into isolated directory
+        # Secondary strategy: isolated directory with fallback mode
         if not found_code:
             out_dir = os.path.join(temp_dir, "out")
             os.makedirs(out_dir, exist_ok=True)
             cmd2 = [
                 "jadx",
                 "--no-res",
-                "-j", "1",
+                "--no-imports",
+                "--show-bad-code",
+                "--fallback",
+                "-j", "2",
                 "--single-class", clean_class,
                 "-d", out_dir,
-                input_path
+                target_apk_path
             ]
             res = subprocess.run(
                 cmd2,
@@ -157,23 +200,32 @@ async def decompile_class(
                 }
             )
 
-        # Store in cache (limit to 250 items to avoid RAM growth)
-        if len(class_cache) > 250:
+        # Store in cache (limit to 500 items)
+        if len(class_cache) > 500:
             class_cache.clear()
         class_cache[cache_key] = found_code
 
         return {
             "className": clean_class,
             "code": found_code,
-            "status": "success"
+            "status": "success",
+            "cached": False
         }
 
     except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="Decompilation timed out under container resource constraints.")
+        raise HTTPException(
+            status_code=504,
+            detail="Decompilation timed out under container resource constraints. Please retry with a specific application class."
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+        if temp_created_path and os.path.exists(temp_created_path):
+            try:
+                os.remove(temp_created_path)
+            except Exception:
+                pass
 
 @app.post("/api/decompile")
 async def decompile_all(
