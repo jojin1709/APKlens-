@@ -163,23 +163,31 @@ export default function APKLens() {
 
   return (
     <main className="shell">
+      {/* Dynamic Ambient Background Orbs */}
+      <div className="ambient-bg">
+        <div className="aurora-orb orb-1"></div>
+        <div className="aurora-orb orb-2"></div>
+        <div className="aurora-orb orb-3"></div>
+        <div className="ambient-grid"></div>
+      </div>
+
       {/* Topbar */}
       <header className="topbar">
         <div className="brand" onClick={() => setView("landing")} style={{ cursor: "pointer" }}>
           <div className="brandmark">
-            <Shield size={22} />
+            <Shield size={20} className="brandmark-icon" />
           </div>
           <div>
             <div className="brand-title">
-              APKLens <span className="version-pill">v2.0 PRO</span>
+              APKLens <span className="version-pill">v2.0</span>
             </div>
-            <span className="brand-sub">Android Static Reverse Engineering</span>
+            <span className="brand-sub">Android Security & Architecture Suite</span>
           </div>
         </div>
 
         <nav>
           <button className="nav-tab-btn" onClick={() => setView("landing")}>
-            <ArrowLeft size={14} /> Back to Product Tour
+            <ArrowLeft size={14} /> Back to Overview
           </button>
         </nav>
 

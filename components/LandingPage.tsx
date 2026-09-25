@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import {
   Shield, Lock, Zap, Code2, Cpu, FileText, CheckCircle2, ArrowRight,
-  Upload, Terminal, Search, ExternalLink, Check, Sparkles, Layers, Eye
+  Upload, Layers, Eye, ShieldCheck, Check, Laptop, FileCode,
+  Download, ArrowUpRight
 } from "lucide-react";
 
 interface LandingPageProps {
@@ -27,26 +28,34 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
 
   return (
     <div className="landing-wrap">
+      {/* Dynamic Ambient Background Orbs */}
+      <div className="ambient-bg">
+        <div className="aurora-orb orb-1"></div>
+        <div className="aurora-orb orb-2"></div>
+        <div className="aurora-orb orb-3"></div>
+        <div className="ambient-grid"></div>
+      </div>
+
       {/* Top Navbar */}
       <nav className="landing-nav">
         <div className="landing-nav-inner">
           <div className="brand" onClick={onLaunch} style={{ cursor: "pointer" }}>
             <div className="brandmark">
-              <Shield size={22} className="brandmark-icon" />
+              <Shield size={20} className="brandmark-icon" />
             </div>
             <div>
               <div className="brand-title">
-                APKLens <span className="version-pill">v2.0 PRO</span>
+                APKLens <span className="version-pill">v2.0</span>
               </div>
-              <span className="brand-sub">Android Binary Intelligence & SAST</span>
+              <span className="brand-sub">Android Security & Architecture Suite</span>
             </div>
           </div>
 
           <div className="landing-nav-links">
             <a href="#capabilities">Capabilities</a>
-            <a href="#architecture">Architecture</a>
-            <a href="#sast">SAST Scanner</a>
-            <a href="#reports">SARIF & Reports</a>
+            <a href="#pipeline">Analysis Engine</a>
+            <a href="#workflow">How It Works</a>
+            <a href="#architecture">Privacy Architecture</a>
           </div>
 
           <div className="landing-nav-actions">
@@ -60,22 +69,21 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
 
       {/* Hero Section */}
       <section className="hero-section">
-        <div className="hero-bg-glow"></div>
         <div className="hero-container">
           <div className="hero-badge">
-            <Sparkles size={14} className="text-cyan" />
-            <span>Privacy-First • 100% In-Browser Parsing • Zero Cloud Leakage</span>
+            <span className="status-dot"></span>
+            <span>100% In-Browser Inspection • Zero Server Uploads</span>
           </div>
 
           <h1 className="hero-title">
-            Reverse Engineer & Audit <br />
+            The Modern Way to Inspect & Audit <br />
             <span className="gradient-text">Android APKs with Zero Data Exposure</span>
           </h1>
 
           <p className="hero-subtitle">
-            APKLens extracts binary AndroidManifest.xml, inspects Dalvik bytecode,
-            hunts hardcoded API secrets, audits native ELF (.so) binaries, and reconstructs
-            Java/Kotlin source code on-demand.
+            APKLens decodes binary AndroidManifest.xml, inspects Dalvik bytecode,
+            audits native ELF (.so) binaries, scans for hardcoded secrets, and decompiles
+            source code—running 100% locally in your browser sandbox.
           </p>
 
           {/* Interactive Drag & Drop Box */}
@@ -87,7 +95,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
             onClick={() => {
               const input = document.createElement("input");
               input.type = "file";
-              input.accept = ".apk";
+              input.accept = ".apk,application/vnd.android.package-archive";
               input.onchange = (e) => {
                 const f = (e.target as HTMLInputElement).files?.[0];
                 if (f) onFileSelect(f);
@@ -96,37 +104,162 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
             }}
           >
             <div className="dropzone-icon-box">
-              <Upload size={28} className="dropzone-icon" />
+              <Upload size={30} />
             </div>
             <div className="dropzone-content">
-              <h3>Drop your Android APK here or <span className="text-cyan">browse files</span></h3>
-              <p>Supports .apk (Split APKs, Multi-DEX, Native NDK). Analyzed instantly in memory.</p>
+              <h3>Drop your Android APK here or <span className="browse-link">browse files</span></h3>
+              <p>Processed completely in local memory. Ideal for NDA & enterprise builds.</p>
             </div>
-            <div className="dropzone-badge">
-              <Lock size={13} /> Local-First Security Sandbox
+            <div className="dropzone-badges">
+              <span className="dropzone-badge">
+                <Lock size={13} /> Private Local Sandbox
+              </span>
+              <span className="format-pill">Split APKs</span>
+              <span className="format-pill">Multi-DEX</span>
+              <span className="format-pill">Native NDK</span>
             </div>
           </div>
 
-          {/* Quick Metrics Bar */}
+          {/* Key Metrics Bar (Modern Cards) */}
           <div className="metrics-bar">
-            <div className="metric-item">
-              <span className="metric-val text-cyan">0 Bytes</span>
-              <span className="metric-label">Uploaded to Cloud for Static Analysis</span>
+            <div className="metric-card">
+              <div className="metric-card-top">
+                <span className="metric-val">0 Bytes</span>
+                <div className="metric-icon-wrap bg-indigo-glow">
+                  <Lock size={16} />
+                </div>
+              </div>
+              <span className="metric-label">Uploaded to external servers for static triage</span>
             </div>
-            <div className="metric-divider"></div>
-            <div className="metric-item">
-              <span className="metric-val text-indigo">JADX 1.5.1</span>
-              <span className="metric-label">Cloud AST Decompiler Engine</span>
+
+            <div className="metric-card">
+              <div className="metric-card-top">
+                <span className="metric-val">Sub-Sec</span>
+                <div className="metric-icon-wrap bg-blue-glow">
+                  <Zap size={16} />
+                </div>
+              </div>
+              <span className="metric-label">Binary AXML decode & permission extraction</span>
             </div>
-            <div className="metric-divider"></div>
-            <div className="metric-item">
-              <span className="metric-val text-emerald">SARIF 2.1.0</span>
-              <span className="metric-label">OASIS Standard DevSecOps Export</span>
+
+            <div className="metric-card">
+              <div className="metric-card-top">
+                <span className="metric-val">JADX 1.5</span>
+                <div className="metric-icon-wrap bg-purple-glow">
+                  <Code2 size={16} />
+                </div>
+              </div>
+              <span className="metric-label">On-demand Java & Kotlin AST source decompiler</span>
             </div>
-            <div className="metric-divider"></div>
-            <div className="metric-item">
-              <span className="metric-val text-amber">OWASP MASTG</span>
-              <span className="metric-label">Aligned Vulnerability Checks</span>
+
+            <div className="metric-card">
+              <div className="metric-card-top">
+                <span className="metric-val">SARIF 2.1</span>
+                <div className="metric-icon-wrap bg-emerald-glow">
+                  <FileText size={16} />
+                </div>
+              </div>
+              <span className="metric-label">OASIS standard DevSecOps & PDF report export</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Analysis Engine Pipeline Section */}
+      <section id="pipeline" className="showcase-section">
+        <div className="window-mockup">
+          <div className="window-titlebar">
+            <div className="window-dots">
+              <span className="window-dot dot-close"></span>
+              <span className="window-dot dot-min"></span>
+              <span className="window-dot dot-max"></span>
+            </div>
+            <div className="window-title">APKLens Client-Side Architecture Pipeline</div>
+            <span className="window-badge">Real-Time Parsing Engine</span>
+          </div>
+
+          <div className="window-content">
+            <div className="mock-grid">
+              <div className="mock-stat">
+                <span>Core Parsing</span>
+                <b>Pure TypeScript</b>
+              </div>
+              <div className="mock-stat">
+                <span>Security Engine</span>
+                <b>Entropy & Patterns</b>
+              </div>
+              <div className="mock-stat">
+                <span>Native Auditing</span>
+                <b>ELF32 & ELF64</b>
+              </div>
+              <div className="mock-stat">
+                <span>Compliance</span>
+                <b>SARIF 2.1 & PDF</b>
+              </div>
+            </div>
+
+            <div className="mock-preview-columns">
+              <div className="mock-findings-box">
+                <div className="mock-code-head">
+                  <span>Client-Side Static Inspection Engines</span>
+                  <span>100% In-Browser</span>
+                </div>
+
+                <div className="mock-finding-item">
+                  <span className="finding-tag tag-critical">Engine</span>
+                  <div>
+                    <b>Binary AXML Chunk Decoder</b>
+                    <p>Decodes compiled binary AndroidManifest.xml, extracting real package metadata, components, and permissions.</p>
+                  </div>
+                </div>
+
+                <div className="mock-finding-item">
+                  <span className="finding-tag tag-medium">Engine</span>
+                  <div>
+                    <b>Dalvik Bytecode & String Sweeper</b>
+                    <p>Parses Multi-DEX header tables, class descriptor pools, methods, and embedded URL endpoints.</p>
+                  </div>
+                </div>
+
+                <div className="mock-finding-item">
+                  <span className="finding-tag tag-high">Engine</span>
+                  <div>
+                    <b>X.509 ASN.1 Certificate Validator</b>
+                    <p>Extracts JAR v1 signatures and APK Signing Block v2/v3 certificates with validity and SHA-256 hashes.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mock-findings-box">
+                <div className="mock-code-head">
+                  <span>Automated SAST & DevSecOps Export</span>
+                  <span>OASIS Aligned</span>
+                </div>
+
+                <div className="mock-finding-item">
+                  <span className="finding-tag tag-critical">Security</span>
+                  <div>
+                    <b>Hardcoded Secret & Key Hunter</b>
+                    <p>Pattern and Shannon entropy detection for exposed AWS keys, Google API tokens, Firebase databases, and Stripe keys.</p>
+                  </div>
+                </div>
+
+                <div className="mock-finding-item">
+                  <span className="finding-tag tag-medium">Native</span>
+                  <div>
+                    <b>ELF (.so) Shared Object Inspector</b>
+                    <p>Identifies ARM, ARM64, x86 architectures, endianness, linked dependencies, and exported JNI functions.</p>
+                  </div>
+                </div>
+
+                <div className="mock-finding-item">
+                  <span className="finding-tag tag-high">Export</span>
+                  <div>
+                    <b>DevSecOps SARIF 2.1.0 & Executive PDF</b>
+                    <p>One-click standard reports for GitHub Code Scanning, GitLab CI/CD, and printable PDF audits.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -136,18 +269,18 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
       <section id="capabilities" className="section-container">
         <div className="section-head">
           <div className="section-tag">CAPABILITIES</div>
-          <h2 className="section-title">Engineered for Elite Security Researchers & Developers</h2>
+          <h2 className="section-title">Engineered for Developers & Security Analysts</h2>
           <p className="section-desc">
-            A complete suite of static reverse engineering tools that run in your browser without
-            installing bloated command-line utilities.
+            A complete suite of static inspection utilities that run inside your browser
+            without installing command-line tools or bloated virtual environments.
           </p>
         </div>
 
         <div className="features-grid">
           {/* Feature 1 */}
           <div className="feature-glass-card">
-            <div className="feature-icon bg-cyan-glow">
-              <Lock size={22} className="text-cyan" />
+            <div className="feature-icon bg-indigo-glow">
+              <Lock size={24} />
             </div>
             <h3>100% Client-Side Binary Engine</h3>
             <p>
@@ -164,35 +297,35 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
 
           {/* Feature 2 */}
           <div className="feature-glass-card">
-            <div className="feature-icon bg-indigo-glow">
-              <Code2 size={22} className="text-indigo" />
+            <div className="feature-icon bg-purple-glow">
+              <Code2 size={24} />
             </div>
-            <h3>On-Demand JADX Cloud Decompilation</h3>
+            <h3>On-Demand JADX Decompilation</h3>
             <p>
               Inspect thousands of compiled Dalvik bytecode classes. Click on any class to trigger
               focused, single-class AST decompilation with real-time percentage progress tracking
               and syntax highlighting.
             </p>
             <div className="feature-tags">
-              <span>FastAPI Backend</span>
               <span>Single-Class AST</span>
-              <span>Real-Time Progress</span>
+              <span>Progress Tracking</span>
+              <span>Java & Kotlin</span>
             </div>
           </div>
 
           {/* Feature 3 */}
           <div className="feature-glass-card">
             <div className="feature-icon bg-rose-glow">
-              <Eye size={22} className="text-rose" />
+              <Eye size={24} />
             </div>
-            <h3>Automated SAST & Credential Hunter</h3>
+            <h3>Automated Vulnerability & Secret Hunter</h3>
             <p>
               Scans bytecode strings and manifest configurations for exposed AWS access keys,
               Google API keys, Firebase real-time databases, Stripe secrets, private keys, and
               weak encryption ciphers (ECB, DES, MD5).
             </p>
             <div className="feature-tags">
-              <span>Entropy & Regex</span>
+              <span>Entropy & Patterns</span>
               <span>Masked Findings</span>
               <span>OWASP Aligned</span>
             </div>
@@ -201,7 +334,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
           {/* Feature 4 */}
           <div className="feature-glass-card">
             <div className="feature-icon bg-emerald-glow">
-              <Cpu size={22} className="text-emerald" />
+              <Cpu size={24} />
             </div>
             <h3>ELF (.so) Native Symbol Inspector</h3>
             <p>
@@ -219,7 +352,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
           {/* Feature 5 */}
           <div className="feature-glass-card">
             <div className="feature-icon bg-amber-glow">
-              <FileText size={22} className="text-amber" />
+              <FileText size={24} />
             </div>
             <h3>Executive Reports & SARIF 2.1.0</h3>
             <p>
@@ -230,26 +363,66 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
             <div className="feature-tags">
               <span>SARIF 2.1.0</span>
               <span>Printable PDF</span>
-              <span>Score Benchmark</span>
+              <span>Security Score</span>
             </div>
           </div>
 
           {/* Feature 6 */}
           <div className="feature-glass-card">
-            <div className="feature-icon bg-cyan-glow">
-              <Layers size={22} className="text-cyan" />
+            <div className="feature-icon bg-blue-glow">
+              <Layers size={24} />
             </div>
             <h3>IndexedDB Offline Workspace</h3>
             <p>
-              Your analyses are automatically preserved in your browser's encrypted IndexedDB storage.
+              Your analyses are automatically preserved in your browser&apos;s encrypted IndexedDB storage.
               Switch between previous analyses, compare security findings, and resume work anytime
               without re-uploading.
             </p>
             <div className="feature-tags">
-              <span>Zero-Storage Server</span>
-              <span>Local IndexedDB</span>
+              <span>Local Storage</span>
+              <span>IndexedDB Vault</span>
               <span>Instant Reload</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3-Step Workflow Section */}
+      <section id="workflow" className="workflow-section">
+        <div className="section-head">
+          <div className="section-tag">WORKFLOW</div>
+          <h2 className="section-title">How APKLens Works</h2>
+          <p className="section-desc">
+            Streamlined static triage designed for velocity and privacy.
+          </p>
+        </div>
+
+        <div className="workflow-grid">
+          <div className="workflow-card">
+            <span className="step-num">01</span>
+            <h3>Drop & In-Memory Decompression</h3>
+            <p>
+              The browser reads your APK as an ArrayBuffer using the File API. The archive entries
+              are parsed locally without touching server disk or transmitting bytes.
+            </p>
+          </div>
+
+          <div className="workflow-card">
+            <span className="step-num">02</span>
+            <h3>Static Binary & Bytecode Triage</h3>
+            <p>
+              The binary AXML chunk parser decodes AndroidManifest.xml. Dalvik DEX headers are mapped,
+              native ELF architectures inspected, and secrets swept using regex & entropy rules.
+            </p>
+          </div>
+
+          <div className="workflow-card">
+            <span className="step-num">03</span>
+            <h3>Explore, Decompile & Export</h3>
+            <p>
+              Browse classes, decompile targeted methods to readable Java/Kotlin via JADX, and
+              export audit-ready SARIF 2.1.0 or printable executive PDF reports.
+            </p>
           </div>
         </div>
       </section>
@@ -260,10 +433,10 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
           <div className="arch-header">
             <div>
               <div className="section-tag">ZERO DATA LEAKAGE</div>
-              <h2>How APKLens Protects Your Intellectual Property</h2>
+              <h2>How APKLens Protects Confidential Binaries</h2>
             </div>
             <button className="glow-btn" onClick={onLaunch}>
-              <span>Try Live in Console</span>
+              <span>Open Console</span>
               <ArrowRight size={15} />
             </button>
           </div>
@@ -276,9 +449,9 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
               </div>
               <ul className="arch-list">
                 <li>❌ Entire APK file uploaded and stored on third-party servers.</li>
-                <li>❌ Proprietary intellectual property, API keys, and pre-release code leaked.</li>
-                <li>❌ Slow queue times and multi-minute waits for analysis.</li>
-                <li>❌ Requires user account registration and credit-card billing.</li>
+                <li>❌ Proprietary intellectual property, API keys, and pre-release code exposed.</li>
+                <li>❌ High latency queues and multi-minute waits for analysis.</li>
+                <li>❌ Requires user account registration, credit cards, or subscription tiers.</li>
               </ul>
             </div>
 
@@ -288,9 +461,9 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
                 <b>APKLens Privacy-First Architecture</b>
               </div>
               <ul className="arch-list">
-                <li>✅ <b>100% In-Browser Static Engine:</b> Binary parsing runs in local JS memory.</li>
+                <li>✅ <b>100% In-Browser Static Engine:</b> Binary parsing runs in local JavaScript memory.</li>
                 <li>✅ <b>Targeted On-Demand Decompilation:</b> Only target classes are requested.</li>
-                <li>✅ <b>Zero Account Friction:</b> No sign-in, no tracking cookies, no server logs.</li>
+                <li>✅ <b>Zero Account Friction:</b> No sign-in, no tracking cookies, no telemetry logs.</li>
                 <li>✅ <b>Instant Feedback:</b> Sub-second analysis of manifest, certs, and DEX headers.</li>
               </ul>
             </div>
@@ -298,17 +471,17 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
         </div>
       </section>
 
-      {/* Call To Action Footer Banner */}
+      {/* Call To Action Banner */}
       <section className="cta-banner">
         <div className="cta-inner">
           <h2>Ready to Inspect Your First Android APK?</h2>
           <p>
-            Experience lightning-fast client-side static reverse engineering with automated SAST
-            security audits and on-demand JADX cloud decompilation.
+            Experience lightning-fast client-side static analysis with automated security
+            audits and on-demand source decompilation.
           </p>
           <div className="cta-actions">
             <button className="glow-btn big" onClick={onLaunch}>
-              <span>Open APKLens Console</span>
+              <span>Launch APKLens Console</span>
               <ArrowRight size={18} />
             </button>
           </div>
@@ -319,12 +492,12 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
       <footer className="landing-footer">
         <div className="footer-inner">
           <div className="footer-brand">
-            <Shield size={18} className="text-cyan" />
+            <Shield size={18} className="text-indigo" />
             <b>APKLens</b>
-            <span>• Next-Gen Android Binary Inspection Platform</span>
+            <span>• Next-Gen Android Security & Architecture Platform</span>
           </div>
           <div className="footer-copy">
-            © 2026 JOJIN JOHN. All Rights Reserved. APKLens Proprietary Platform.
+            © 2026 JOJIN JOHN. All Rights Reserved. APKLens Platform.
           </div>
         </div>
       </footer>
