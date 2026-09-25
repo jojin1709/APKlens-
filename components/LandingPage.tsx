@@ -24,7 +24,9 @@ export default function LandingPage({ onLaunch, onFileSelect, onLoadSample }: La
     setDragActive(false);
     if (e.dataTransfer.files?.[0]) {
       const file = e.dataTransfer.files[0];
-      if (file.name.toLowerCase().endsWith(".apk")) {
+      const validExts = [".apk", ".aab", ".xapk", ".apks"];
+      const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+      if (validExts.includes(ext)) {
         onFileSelect(file);
       }
     }

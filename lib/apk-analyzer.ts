@@ -159,7 +159,16 @@ async function extractAppIcon(zip: JSZip): Promise<string | null> {
 export async function analyzeAPK(file: File): Promise<APKAnalysis> {
   const buffer = await file.arrayBuffer();
   const hash = await sha256(buffer);
-  const zip = await JSZip.loadAsync(buffer);
+  let zip = await JSZip.loadAsync(buffer);
+
+  // If this archive is an XAPK / APKS bundle containing base.apk, load base.apk
+  if (zip.file("base.apk")) {
+    try {
+      const baseBytes = await zip.file("base.apk")!.async("uint8array");
+      zip = await JSZip.loadAsync(baseBytes);
+    } catch {}
+  }
+
   const icon = await extractAppIcon(zip);
 
   const files: APKFile[] = [];
@@ -175,12 +184,19 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
   const allCollectedStrings: string[] = [];
 
   const names = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
+
+  // Detect Android App Bundle format
+  if (names.some((n) => n.startsWith("base/manifest/") || n === "BundleConfig.pb")) {
+    technologies.add("Android App Bundle (.aab)");
+  }
+
   for (const path of names) {
     const entry = zip.files[path];
     const bytes = await entry.async("uint8array");
     files.push({ path, size: bytes.byteLength, type: "file" });
 
-    if (path === "AndroidManifest.xml") {
+    // Match AndroidManifest.xml (standard APK or base/manifest/AndroidManifest.xml in .aab)
+    if (path === "AndroidManifest.xml" || path === "base/manifest/AndroidManifest.xml") {
       if (isBinaryAxml(bytes)) {
         try {
           decodedManifest = decodeAxml(bytes);
@@ -201,17 +217,17 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
       }
     }
     
-    if (path.startsWith("res/")) resources.push(path);
-    if (path.startsWith("assets/")) assets.push(path);
+    if (path.startsWith("res/") || path.startsWith("base/res/")) resources.push(path);
+    if (path.startsWith("assets/") || path.startsWith("base/assets/")) assets.push(path);
     
     // Parse ELF native libraries (.so)
-    if (path.startsWith("lib/") && path.endsWith(".so")) {
+    if ((path.startsWith("lib/") || path.startsWith("base/lib/")) && path.endsWith(".so")) {
       const elfInfo = parseElf(bytes, path);
       nativeLibraries.push(elfInfo);
     }
 
     // Parse Dalvik Executable (DEX) bytecode
-    if (/^classes\d*\.dex$/.test(path)) {
+    if (/(?:^|\/)classes\d*\.dex$/i.test(path)) {
       const strings = extractStrings(bytes);
       allCollectedStrings.push(...strings);
       const dexData = parseDex(bytes, path);
@@ -400,6 +416,31 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
       title: `Storage & Backup: ${f.title}`,
       evidence: `${f.description} (Remediation: ${f.recommendation})`,
     });
+  }
+
+  // Append Native ELF Library Hardening Findings
+  for (const lib of nativeLibraries) {
+    if (!lib.hardening.hasStackCanary && lib.size > 20480) {
+      findings.push({
+        severity: "medium",
+        title: `Native Binary: Missing Stack Canary (${lib.name})`,
+        evidence: `Binary ${lib.path} (${lib.architecture}) lacks __stack_chk_fail canary mitigation against buffer overflows.`,
+      });
+    }
+    if (!lib.hardening.hasNxStack) {
+      findings.push({
+        severity: "high",
+        title: `Native Binary: Executable Stack (NX Disabled) in ${lib.name}`,
+        evidence: `Binary ${lib.path} has an executable GNU_STACK segment, leaving memory vulnerable to shellcode execution.`,
+      });
+    }
+    if (lib.hardening.hasRpath) {
+      findings.push({
+        severity: "high",
+        title: `Native Binary: Insecure RPATH/RUNPATH in ${lib.name}`,
+        evidence: `Binary ${lib.path} hardcodes dynamic search paths (${lib.hardening.rpathEntries.join(", ")}), risking DLL hijacking.`,
+      });
+    }
   }
 
   // Append SAST Secret Findings

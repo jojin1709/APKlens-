@@ -26,9 +26,9 @@ X.509 certificate parsing, and automated vulnerability scanning with zero server
 
 <br/>
 
-![](https://img.shields.io/badge/19_Analysis_Modules-3DDC84?style=for-the-badge&labelColor=0D1117)
+![](https://img.shields.io/badge/21_Analysis_Modules-3DDC84?style=for-the-badge&labelColor=0D1117)
 &nbsp;![](https://img.shields.io/badge/100%25_Client_Side-3DDC84?style=for-the-badge&labelColor=0D1117&logo=googlechrome&logoColor=white)
-&nbsp;![](https://img.shields.io/badge/Frida_%2B_ADB_Assistant-3DDC84?style=for-the-badge&labelColor=0D1117&logo=terminal&logoColor=white)
+&nbsp;![](https://img.shields.io/badge/Frida_%2B_Intent_Playground-3DDC84?style=for-the-badge&labelColor=0D1117&logo=terminal&logoColor=white)
 &nbsp;![](https://img.shields.io/badge/Binary_AXML_Decoder-3DDC84?style=for-the-badge&labelColor=0D1117&logo=android&logoColor=white)
 &nbsp;![](https://img.shields.io/badge/Exodus_Trackers-3DDC84?style=for-the-badge&labelColor=0D1117)
 &nbsp;![](https://img.shields.io/badge/SARIF_2.1.0_%2B_CI-3DDC84?style=for-the-badge&labelColor=0D1117&logo=githubactions&logoColor=white)
@@ -84,25 +84,29 @@ X.509 certificate parsing, and automated vulnerability scanning with zero server
 | 5 | **Components** | Analysis of exported vs. private Activities, Services, Broadcast Receivers, and Content Providers |
 | 6 | **Deep Links & Schemes** | Audit of all browsable URI schemes and deep link intent filters declared in AndroidManifest.xml |
 | 7 | **DEX & Decompiler** | Dalvik class catalog, method metrics, string pools, live Smali opcode disassembler, and JADX source decompilation |
-| 8 | **Native Libraries (.so)** | ELF32/ELF64 architecture inspection, endianness, linked shared objects, and exported JNI entry points |
+| 8 | **Native Libraries (.so)** | ELF32/ELF64 architecture inspection, endianness, linked shared objects, exported JNI entry points, and compiler hardening audit (PIE, Stack Canary, NX Stack, RELRO, FORTIFY, RPATH) |
 | 9 | **Resources** | Visual catalog of application layouts, values, drawables, and compiled resource references |
 | 10 | **Network & URLs** | Extracted HTTP/HTTPS endpoints, domain names, WebViews, and deep Network Security Config audit |
 | 11 | **Security & Secrets** | Hardcoded credential scanner (AWS, Google, Firebase, Stripe), weak ciphers, and storage/backup audit |
 | 12 | **Trackers & Privacy** | Exodus Privacy signature engine matching advertising, telemetry, and tracking SDK footprints |
 | 13 | **Frida Hook Generator** | 1-click tailored dynamic instrumentation scripts (SSL unpinning, Burp CA re-pinning, anti-root, cipher logger) |
 | 14 | **ADB Exploit Assistant** | Dedicated interactive drawer with ready-to-run adb commands for all exported components and backup dumps |
-| 15 | **OWASP Mobile Top 10** | Automated mapping of findings to official 2024 OWASP Mobile Top 10 (MASVS) risk categories |
-| 16 | **Bytecode Strings** | Live string pool sweeper across all DEX headers with instant filtering and clipboard copying |
-| 17 | **Certificate & Signing** | Extraction of v1/v2/v3 X.509 certs, validity dates, issuer DNs, and SHA-256 fingerprints |
-| 18 | **Technology Stack** | Fingerprinting of frameworks and SDKs (Jetpack, Flutter, React Native, Unity, OkHttp, Firebase) |
-| 19 | **APK Version Diff** | Side-by-side regression analysis comparing permissions, components, secrets, and size between two APK builds |
-| 20 | **Reports & Exports** | One-click JSON dumps, OASIS SARIF 2.1.0 exports, and printable executive PDF reports |
+| 15 | **Intent Playground** | Interactive Intent Spoofing & Injection workbench with custom extras (--es, --ez, --ei), flags, and export to ADB, Python, Frida, and Bash |
+| 16 | **OWASP Mobile Top 10** | Automated mapping of findings to official 2024 OWASP Mobile Top 10 (MASVS) risk categories |
+| 17 | **Bytecode Strings** | Live string pool sweeper across all DEX headers with instant filtering and clipboard copying |
+| 18 | **Certificate & Signing** | Extraction of v1/v2/v3 X.509 certs, validity dates, issuer DNs, and SHA-256 fingerprints |
+| 19 | **Technology Stack** | Fingerprinting of frameworks and SDKs (Jetpack, Flutter, React Native, Unity, OkHttp, Firebase) |
+| 20 | **APK Version Diff** | Side-by-side regression analysis comparing permissions, components, secrets, and size between two APK builds |
+| 21 | **Reports & Exports** | One-click JSON dumps, OASIS SARIF 2.1.0 exports, and printable executive PDF reports |
 
 ---
 
 ## Key Capabilities
 
 - **Pure TypeScript AXML Engine:** Binary XML chunk parsing without requiring Android SDK tools (aapt, apkanalyzer, or apktool).
+- **Universal Archive Support:** Ingests standard `.apk`, Google Play `.aab` (Android App Bundle), `.xapk`, and `.apks` split packages seamlessly.
+- **ELF Binary Hardening Auditor:** Pure client-side parsing of ELF program headers and string tables to detect PIE, Stack Canary (`__stack_chk_fail`), NX Stack (`PT_GNU_STACK`), RELRO (`PT_GNU_RELRO`), `FORTIFY_SOURCE`, and insecure RPATH/RUNPATH references.
+- **Interactive Intent Injection Playground:** Real-time IPC attack surface testing with custom action, data URI, MIME, category, flag, and extra parameter crafting, exported directly as ADB shell commands, Python subprocess scripts, Frida hooks, or Bash scripts.
 - **X.509 Certificate Extractor:** Parses ASN.1 DER blocks from META-INF/*.RSA and APK Signing Block structures.
 - **Multi-DEX Bytecode Sweeper:** Recursively parses classes.dex, classes2.dex, ... identifying class descriptors, method counts, and printable string tables.
 - **Entropy & Regex Secret Engine:** Shannon entropy and targeted regex signatures to detect accidentally committed tokens and API keys.
