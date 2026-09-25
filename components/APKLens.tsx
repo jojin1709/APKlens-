@@ -257,7 +257,7 @@ export default function APKLens() {
 
       <div className="body">
         {/* Sidebar */}
-        <aside className="sidebar">
+        <aside className="sidebar" style={{ flexShrink: 0 }}>
           <div className="side-label">ANALYSIS SECTIONS</div>
           {tabs.map((t) => (
             <button
@@ -296,19 +296,68 @@ export default function APKLens() {
         {/* Content Area */}
         <section className="content">
           {busy ? (
-            <div className="progress-modal-backdrop">
-              <div className="progress-modal">
-                <div className="progress-modal-icon">
-                  <Sparkles size={28} />
+            <div className="apk-scan-backdrop">
+              {/* Background Atmospheric Glow */}
+              <div className="scan-bg-glow" />
+
+              <div className="apk-scan-modal">
+                {/* Top badge */}
+                <div className="scan-live-badge">
+                  <span className="scan-live-dot" />
+                  <span>Live Analysis Engine</span>
                 </div>
-                <h3>Analyzing Android Binary</h3>
-                <div className="progress-modal-target">{currentFile?.name ?? "APK Binary"}</div>
-                <div className="progress-track">
-                  <div className="progress-fill" style={{ width: "75%" }}></div>
+
+                {/* Central animated icon */}
+                <div className="scan-icon-stage">
+                  {/* Pulsing orbital rings */}
+                  <div className="scan-ring scan-ring-1" />
+                  <div className="scan-ring scan-ring-2" />
+                  <div className="scan-ring scan-ring-3" />
+                  {/* Android logo center */}
+                  <div className="scan-icon-core">
+                    <img src="/icon.svg" alt="APKLens" width={44} height={44} />
+                  </div>
+                  {/* Sweeping scan beam */}
+                  <div className="scan-beam" />
                 </div>
-                <div className="progress-info">
-                  <span className="progress-stage">{busyStage || "Processing byte stream..."}</span>
-                  <span className="progress-percent">Analyzing...</span>
+
+                {/* Title */}
+                <h2 className="scan-title">Analyzing Android Binary</h2>
+
+                {/* File name chip */}
+                <div className="scan-file-chip">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  {currentFile?.name ?? "APK Binary"}
+                </div>
+
+                {/* Animated progress bar */}
+                <div className="scan-progress-track">
+                  <div className="scan-progress-fill" />
+                  <div className="scan-progress-shimmer" />
+                </div>
+
+                {/* Stage text */}
+                <div className="scan-stage-text">
+                  <span className="scan-stage-dot" />
+                  <span>{busyStage || "Processing byte stream..."}</span>
+                </div>
+
+                {/* Stats row */}
+                <div className="scan-stats-row">
+                  <div className="scan-stat">
+                    <span className="scan-stat-label">Engine</span>
+                    <span className="scan-stat-val">WebAssembly</span>
+                  </div>
+                  <div className="scan-stat-divider" />
+                  <div className="scan-stat">
+                    <span className="scan-stat-label">Privacy</span>
+                    <span className="scan-stat-val scan-stat-green">100% Local</span>
+                  </div>
+                  <div className="scan-stat-divider" />
+                  <div className="scan-stat">
+                    <span className="scan-stat-label">Upload</span>
+                    <span className="scan-stat-val scan-stat-green">Zero Bytes</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1847,11 +1896,68 @@ function Reports({
   );
 }
 
+function highlightXml(xml: string): string {
+  return xml
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/(&lt;\/?[\w:-]+)/g, '<span class="xml-tag">$1</span>')
+    .replace(/(&gt;)/g, '<span class="xml-tag">$1</span>')
+    .replace(/([\w:-]+=)/g, '<span class="xml-attr">$1</span>')
+    .replace(/("[^"]*")/g, '<span class="xml-val">$1</span>')
+    .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="xml-comment">$1</span>');
+}
+
 function CodePanel({ title, code }: { title: string; code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function doCopy() {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  const lines = code.split("\n");
+  const highlighted = highlightXml(code);
+  const highlightedLines = highlighted.split("\n");
+
   return (
-    <div className="panel full">
-      <div className="panel-title">{title}</div>
-      <pre className="code">{code}</pre>
+    <div className="codepanel-wrap">
+      {/* Editor Chrome Header */}
+      <div className="codepanel-header">
+        <div className="codepanel-header-left">
+          <div className="codepanel-traffic">
+            <span /><span /><span />
+          </div>
+          <span className="codepanel-filename">
+            <FileCode2 size={13} style={{ color: "#3DDC84", flexShrink: 0 }} />
+            {title}
+          </span>
+        </div>
+        <div className="codepanel-header-right">
+          <span className="codepanel-lines-badge">{lines.length} lines</span>
+          <button className="codepanel-copy-btn" onClick={doCopy}>
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+            {copied ? "Copied!" : "Copy"}
+          </button>
+        </div>
+      </div>
+
+      {/* Code Body with line numbers */}
+      <div className="codepanel-body">
+        {/* Line number gutter */}
+        <div className="codepanel-gutter" aria-hidden>
+          {lines.map((_, i) => (
+            <div key={i} className="codepanel-lineno">{i + 1}</div>
+          ))}
+        </div>
+        {/* Syntax highlighted code */}
+        <pre
+          className="codepanel-pre"
+          dangerouslySetInnerHTML={{ __html: highlightedLines.join("\n") }}
+        />
+      </div>
     </div>
   );
 }

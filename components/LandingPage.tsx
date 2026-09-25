@@ -5,8 +5,7 @@ import {
   Shield, Lock, Zap, Code2, Cpu, FileText, CheckCircle2, ArrowRight,
   Upload, Layers, Eye, ShieldCheck, Check, Laptop, FileCode,
   Download, ArrowUpRight, Linkedin, Github, Heart, Link as LinkIcon,
-  Search, Terminal, Database, Key, Sparkles, ChevronDown, CheckCircle, XCircle,
-  Copy, CheckCheck
+  Search, Database, Key, Sparkles, ChevronDown, CheckCircle, XCircle
 } from "lucide-react";
 
 interface LandingPageProps {
@@ -18,7 +17,6 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
   const [dragActive, setDragActive] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [selectedOrbitModule, setSelectedOrbitModule] = useState<number>(0);
-  const [copiedCmd, setCopiedCmd] = useState(false);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -29,12 +27,6 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
         onFileSelect(file);
       }
     }
-  };
-
-  const copyCommand = () => {
-    navigator.clipboard.writeText("npx apklens@latest inspect ./app-release.apk");
-    setCopiedCmd(true);
-    setTimeout(() => setCopiedCmd(false), 2000);
   };
 
   const orbitModules = [
@@ -269,20 +261,6 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
               <span className="pill-fmt">Multi-DEX</span>
               <span className="pill-fmt">Native NDK (.so)</span>
               <span className="pill-fmt">OWASP 2024</span>
-            </div>
-          </div>
-
-          {/* Terminal Command Bar */}
-          <div className="hero-terminal-row">
-            <div className="hero-terminal-bar" onClick={copyCommand} title="Click to copy command">
-              <Terminal size={14} className="terminal-icon" />
-              <span className="terminal-text">
-                <span className="terminal-dim">$</span> npx apklens@latest inspect ./app-release.apk
-              </span>
-              <button className="terminal-copy-btn">
-                {copiedCmd ? <CheckCheck size={14} className="text-emerald" /> : <Copy size={14} />}
-                <span>{copiedCmd ? "Copied" : "Copy"}</span>
-              </button>
             </div>
           </div>
 
