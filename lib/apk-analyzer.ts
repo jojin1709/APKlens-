@@ -5,6 +5,9 @@ import { parseV1Signature, parseV2V3Signature, type APKCertificate } from "@/lib
 import { parseDex } from "@/lib/dex-parser";
 import { scanForSecrets, type SecretFinding } from "@/lib/secret-scanner";
 import { parseElf, type NativeLibraryInfo } from "@/lib/elf-parser";
+import { parseNetworkSecurityConfig, type NetworkSecurityConfigResult } from "@/lib/network-security-config-parser";
+import { detectTrackers, type MatchedTracker } from "@/lib/tracker-detector";
+import { auditStorageAndBackup, type StorageAuditResult } from "@/lib/storage-backup-audit";
 
 // Cache for extracted DEX file blobs to enable ultra-fast single-class decompilation
 export const dexBlobCache = new Map<string, Blob>();
@@ -351,6 +354,54 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
     });
   }
 
+  // Parse Network Security Configuration (res/xml/network_security_config.xml)
+  const netSecEntry = names.find(n => /network_security_config/i.test(n));
+  let networkSecurityConfig: NetworkSecurityConfigResult | null = null;
+  if (netSecEntry) {
+    try {
+      const netSecBytes = await zip.files[netSecEntry].async("uint8array");
+      networkSecurityConfig = parseNetworkSecurityConfig(netSecBytes, netSecEntry);
+    } catch (e) {
+      console.warn("Failed parsing network security config:", e);
+    }
+  }
+
+  // Detect Exodus Privacy Trackers
+  const allDexClassNames = dexFiles.flatMap(d => d.classes ?? []);
+  const trackers = detectTrackers(allDexClassNames, allCollectedStrings);
+
+  // Storage and Backup Security Audit
+  const storageAudit = auditStorageAndBackup(manifestXml, manifest.permissions, allCollectedStrings);
+
+  // Append Network Security Config Findings
+  if (networkSecurityConfig) {
+    for (const f of networkSecurityConfig.findings) {
+      findings.push({
+        severity: f.severity === "critical" ? "critical" : f.severity,
+        title: `Network Security: ${f.title}`,
+        evidence: f.description,
+      });
+    }
+  }
+
+  // Append Tracker Findings
+  if (trackers.length > 0) {
+    findings.push({
+      severity: "info",
+      title: `${trackers.length} Third-Party Trackers & Telemetry SDKs Detected`,
+      evidence: trackers.map(t => `${t.name} (${t.category})`).join("; "),
+    });
+  }
+
+  // Append Storage & Backup Findings
+  for (const f of storageAudit.findings) {
+    findings.push({
+      severity: f.severity === "critical" ? "critical" : f.severity,
+      title: `Storage & Backup: ${f.title}`,
+      evidence: `${f.description} (Remediation: ${f.recommendation})`,
+    });
+  }
+
   // Append SAST Secret Findings
   for (const s of secrets) {
     findings.push({
@@ -386,6 +437,9 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
     dexFiles,
     nativeLibraries,
     secrets,
+    networkSecurityConfig,
+    trackers,
+    storageAudit,
     resources,
     assets,
     manifestXml,

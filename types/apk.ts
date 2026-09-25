@@ -1,8 +1,18 @@
 import type { APKCertificate } from "@/lib/apk-signer";
 import type { NativeLibraryInfo } from "@/lib/elf-parser";
 import type { SecretFinding } from "@/lib/secret-scanner";
+import type { NetworkSecurityConfigResult } from "@/lib/network-security-config-parser";
+import type { MatchedTracker } from "@/lib/tracker-detector";
+import type { StorageAuditResult } from "@/lib/storage-backup-audit";
 
-export type { APKCertificate, NativeLibraryInfo, SecretFinding };
+export type {
+  APKCertificate,
+  NativeLibraryInfo,
+  SecretFinding,
+  NetworkSecurityConfigResult,
+  MatchedTracker,
+  StorageAuditResult,
+};
 
 export type APKFile = {
   path: string;
@@ -53,6 +63,9 @@ export type APKAnalysis = {
   }[];
   nativeLibraries: NativeLibraryInfo[];
   secrets: SecretFinding[];
+  networkSecurityConfig?: NetworkSecurityConfigResult | null;
+  trackers?: MatchedTracker[];
+  storageAudit?: StorageAuditResult | null;
   resources: string[];
   assets: string[];
   manifestXml: string | null;

@@ -1,0 +1,24 @@
+{
+  "name": "APKLens - In-Browser Android APK Security Analyzer",
+  "short_name": "APKLens",
+  "description": "Professional 100% Client-Side Android APK Analyzer, Static Vulnerability Scanner & JADX Decompiler.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08080a",
+  "theme_color": "#08080a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

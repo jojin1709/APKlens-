@@ -11,9 +11,10 @@ import {
 interface LandingPageProps {
   onLaunch: () => void;
   onFileSelect: (file: File) => void;
+  onLoadSample?: () => void;
 }
 
-export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps) {
+export default function LandingPage({ onLaunch, onFileSelect, onLoadSample }: LandingPageProps) {
   const [dragActive, setDragActive] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [selectedOrbitModule, setSelectedOrbitModule] = useState<number>(0);
@@ -270,6 +271,21 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
               <span>Open APKLens Console</span>
               <ArrowRight size={16} />
             </button>
+            {onLoadSample && (
+              <button 
+                type="button" 
+                className="atomic-btn-outline" 
+                style={{ borderColor: "rgba(56, 189, 248, 0.4)", color: "#38bdf8" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLoadSample();
+                }}
+                title="Loads the authentic InsecureBankv2 vulnerable banking APK for instant zero-setup testing"
+              >
+                <Sparkles size={16} />
+                <span>Load Sample APK (InsecureBankv2)</span>
+              </button>
+            )}
             <a 
               href="https://github.com/jojin1709/APKlens-" 
               target="_blank" 

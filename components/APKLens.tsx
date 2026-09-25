@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, AlertCircle, Archive, ArrowLeft, ArrowUpRight, Box, Check, CheckCircle2,
-  ChevronDown, ChevronRight, Code2, Copy, Cpu, Database, Download, Eye, FileCode2, FileText,
-  Folder, Globe, KeyRound, Layers, LayoutDashboard, Link2, Linkedin, Lock, Package, Radio, Search,
+  ChevronDown, ChevronRight, Code2, Copy, Cpu, Database, Download, Eye, FileCode, FileCode2, FileText,
+  Folder, GitCompare, Globe, KeyRound, Layers, LayoutDashboard, Link2, Linkedin, Lock, Package, Radar, Radio, Search,
   Server, Settings, Shield, ShieldAlert, ShieldCheck, Smartphone,
-  Sparkles, Trash2, Upload, X, XCircle, Zap
+  Sparkles, Terminal, Trash2, Upload, X, XCircle, Zap
 } from "lucide-react";
 import LandingPage from "@/components/LandingPage";
 import { analyzeAPK, dexBlobCache } from "@/lib/apk-analyzer";
@@ -15,6 +15,10 @@ import { generateSarif } from "@/lib/sarif-generator";
 import { openPrintableReport } from "@/lib/pdf-report-generator";
 import { generateMarkdownReport, generateCSVFindings } from "@/lib/export-utils";
 import { mapToOWASPTop10 } from "@/lib/owasp-mapper";
+import { disassembleDexClass } from "@/lib/dex-disassembler";
+import { compareAPKs, type APKDiffReport } from "@/lib/apk-differ";
+import { generateFridaScripts, generateCustomMethodHook, type FridaSnippet } from "@/lib/frida-generator";
+import { generateAdbCommands, generateAdbExploitScript, type AdbCommandItem } from "@/lib/adb-assistant";
 import type { APKAnalysis } from "@/types/apk";
 
 type Tab =
@@ -29,10 +33,14 @@ type Tab =
   | "Resources"
   | "Network"
   | "Security"
+  | "Trackers"
+  | "Frida"
+  | "ADB"
   | "OWASP"
   | "Strings"
   | "Signing"
   | "Technology"
+  | "Diff"
   | "Reports";
 
 const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -47,10 +55,14 @@ const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "Resources", label: "Resources", icon: <Archive size={16} /> },
   { id: "Network", label: "Network & URLs", icon: <Globe size={16} /> },
   { id: "Security", label: "Security & Secrets", icon: <ShieldAlert size={16} /> },
+  { id: "Trackers", label: "Trackers & Privacy", icon: <Radar size={16} /> },
+  { id: "Frida", label: "Frida Hook Generator", icon: <Terminal size={16} /> },
+  { id: "ADB", label: "ADB Exploit Assistant", icon: <Radio size={16} /> },
   { id: "OWASP", label: "OWASP Mobile Top 10", icon: <ShieldCheck size={16} /> },
   { id: "Strings", label: "Bytecode Strings", icon: <Search size={16} /> },
   { id: "Signing", label: "Certificate & Signing", icon: <KeyRound size={16} /> },
   { id: "Technology", label: "Technology Stack", icon: <Zap size={16} /> },
+  { id: "Diff", label: "APK Version Diff", icon: <GitCompare size={16} /> },
   { id: "Reports", label: "Reports & Exports", icon: <FileText size={16} /> },
 ];
 
@@ -97,6 +109,24 @@ export default function APKLens() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "The APK could not be analyzed.");
     } finally {
+      setBusy(false);
+      setBusyStage("");
+    }
+  }
+
+  async function loadSampleApk() {
+    setError("");
+    setBusy(true);
+    setBusyStage("Fetching authentic InsecureBankv2.apk sample...");
+    setView("analyzer");
+    try {
+      const res = await fetch("/samples/InsecureBankv2.apk");
+      if (!res.ok) throw new Error("Could not download sample APK: " + res.statusText);
+      const blob = await res.blob();
+      const file = new File([blob], "InsecureBankv2.apk", { type: "application/vnd.android.package-archive" });
+      await run(file);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : "Failed to load sample APK.");
       setBusy(false);
       setBusyStage("");
     }
@@ -189,6 +219,7 @@ export default function APKLens() {
       <LandingPage
         onLaunch={() => setView("analyzer")}
         onFileSelect={(file) => run(file)}
+        onLoadSample={loadSampleApk}
       />
     );
   }
@@ -387,6 +418,24 @@ export default function APKLens() {
                 <button className="primary big" onClick={() => inputRef.current?.click()}>
                   <Upload size={17} /> Choose APK File
                 </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  style={{
+                    marginTop: "10px",
+                    borderColor: "rgba(56, 189, 248, 0.4)",
+                    color: "#38bdf8",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 18px",
+                    fontSize: "0.85rem",
+                    cursor: "pointer",
+                  }}
+                  onClick={loadSampleApk}
+                >
+                  <Sparkles size={15} /> Load Sample APK (InsecureBankv2)
+                </button>
                 <span className="drop-hint">Supports .apk (Split APKs & Multi-DEX)</span>
                 <div className="privacy-line">
                   <Lock size={14} /> Zero Cloud Uploads for Static Analysis • Private Sandbox
@@ -486,6 +535,9 @@ export default function APKLens() {
               {tab === "Resources" && <ResourceView analysis={analysis} />}
               {tab === "Network" && <NetworkView analysis={analysis} />}
               {tab === "Security" && <SecurityView analysis={analysis} />}
+              {tab === "Trackers" && <TrackersView analysis={analysis} />}
+              {tab === "Frida" && <FridaView analysis={analysis} />}
+              {tab === "ADB" && <AdbAssistantView analysis={analysis} />}
               {tab === "OWASP" && <OWASPView analysis={analysis} />}
               {tab === "Strings" && <StringSweeperView analysis={analysis} />}
               {tab === "Signing" && <SigningView analysis={analysis} />}
@@ -496,6 +548,7 @@ export default function APKLens() {
                   empty="No known framework signatures detected."
                 />
               )}
+              {tab === "Diff" && <APKDiffView currentAnalysis={analysis} history={history} />}
               {tab === "Reports" && (
                 <Reports
                   analysis={analysis}
@@ -837,6 +890,36 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
       .filter((c) => c.name.toLowerCase().includes(classFilter.toLowerCase()))
       .slice(0, 300);
   }, [allDexClasses, classFilter]);
+
+  const matchingStrings = useMemo(() => {
+    if (!classFilter.trim() || classFilter.length < 3) return [];
+    const q = classFilter.toLowerCase();
+    return (analysis.strings || []).filter((s) => s.toLowerCase().includes(q)).slice(0, 30);
+  }, [analysis.strings, classFilter]);
+
+  async function disassembleLocally(className: string, dexPath?: string) {
+    let fileToSend: Blob | null = null;
+    if (dexPath) fileToSend = dexBlobCache.get(`${analysis.sha256}:${dexPath}`) || null;
+    if (!fileToSend) fileToSend = dexBlobCache.get(`${analysis.sha256}:primary`) || null;
+    if (!fileToSend && apkFile) fileToSend = apkFile;
+    if (!fileToSend) {
+      setDecompileError("Raw DEX bytecode is not available in memory for local disassembly. Please re-select the APK file.");
+      return;
+    }
+    try {
+      const buffer = await fileToSend.arrayBuffer();
+      const res = disassembleDexClass(new Uint8Array(buffer), className);
+      const nextMap = { ...decompiledMap, [className]: res.smaliCode };
+      setDecompiledMap(nextMap);
+      setActiveClassName(className);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(`apklens_decompiled_${analysis.id}`, JSON.stringify(nextMap));
+        sessionStorage.setItem(`apklens_active_class_${analysis.id}`, className);
+      }
+    } catch (e) {
+      setDecompileError(`Smali disassembly failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
 
   async function testBackend() {
     if (!urlInput.trim()) {
@@ -1308,9 +1391,49 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
         <input
           value={classFilter}
           onChange={(e) => setClassFilter(e.target.value)}
-          placeholder="Filter class names (e.g. com.android.insecurebankv2.PostLogin)..."
+          placeholder="Global Code & String Search (e.g. PostLogin, auth, token, password, api_key)..."
         />
       </div>
+
+      {classFilter.trim().length >= 3 && matchingStrings.length > 0 && (
+        <div
+          style={{
+            margin: "10px 0 12px 0",
+            background: "rgba(0, 0, 0, 0.4)",
+            border: "1px solid var(--border-glass)",
+            borderRadius: "10px",
+            padding: "10px 14px",
+          }}
+        >
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--cyan)", marginBottom: "6px" }}>
+            🔍 MATCHED BYTECODE STRINGS ({matchingStrings.length}):
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", maxHeight: "120px", overflowY: "auto" }}>
+            {matchingStrings.map((s, i) => (
+              <span
+                key={i}
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "11px",
+                  background: "rgba(255, 255, 255, 0.06)",
+                  color: "var(--text-muted)",
+                  padding: "3px 8px",
+                  borderRadius: "4px",
+                  maxWidth: "320px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  border: "1px solid var(--border-glass)",
+                }}
+                title={s}
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="file-list" style={{ maxHeight: "380px", overflowY: "auto" }}>
         {filtered.length ? (
           filtered.map((c, i) => (
@@ -1325,14 +1448,28 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
                   {c.name}
                 </span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <small>{c.dex}</small>
+                <button
+                  className="secondary"
+                  style={{
+                    padding: "4px 8px",
+                    fontSize: "0.75rem",
+                    cursor: "pointer",
+                    color: "var(--cyan)",
+                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                  }}
+                  title="Instant In-Browser Dalvik Disassembler (0ms, 100% offline)"
+                  onClick={() => disassembleLocally(c.name, c.dex)}
+                >
+                  ⚡ Smali
+                </button>
                 <button
                   className="secondary"
                   style={{ padding: "4px 10px", fontSize: "0.75rem", cursor: "pointer" }}
                   onClick={() => decompile(c.name, c.dex)}
                 >
-                  {decompiledMap[c.name] ? "View Code" : "Decompile"}
+                  {decompiledMap[c.name] ? "View Code" : "Decompile (JADX)"}
                 </button>
               </div>
             </div>
@@ -1478,23 +1615,123 @@ function ResourceView({ analysis }: { analysis: APKAnalysis }) {
 }
 
 function NetworkView({ analysis }: { analysis: APKAnalysis }) {
+  const netSec = analysis.networkSecurityConfig;
+
   return (
-    <div className="two">
-      <ListView
-        title="Extracted HTTP / HTTPS Endpoints"
-        items={analysis.urls}
-        empty="No web endpoints found in scanned bytecode."
-      />
-      <ListView
-        title="Discovered Network Domains"
-        items={analysis.domains}
-        empty="No external domains found."
-      />
-      <ListView
-        title="Embedded WebView Usage"
-        items={analysis.webViews}
-        empty="No WebViews detected."
-      />
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* Network Security Config Panel */}
+      <div className="panel full">
+        <div className="panel-title">
+          Android Network Security Configuration (network_security_config.xml)
+          <span className="badges">
+            {netSec?.present ? (
+              <span className="blue">Declared ({netSec.filePath})</span>
+            ) : (
+              <span className="muted">Default Platform Policy</span>
+            )}
+          </span>
+        </div>
+
+        {netSec?.present ? (
+          <div>
+            <div className="meta-grid" style={{ marginBottom: "16px" }}>
+              <Meta
+                label="Cleartext Traffic"
+                value={
+                  netSec.cleartextTrafficPermitted === true
+                    ? "Permitted (Insecure)"
+                    : netSec.cleartextTrafficPermitted === false
+                    ? "Blocked (Strict HTTPS)"
+                    : "Inherited (Target SDK)"
+                }
+              />
+              <Meta
+                label="Trusts User CAs (MITM Risk)"
+                value={netSec.trustsUserCerts ? "YES (High Risk)" : "No (System Only)"}
+              />
+              <Meta
+                label="Certificate Pin Sets"
+                value={String(netSec.pinSets.length)}
+              />
+              <Meta
+                label="Domain Overrides"
+                value={String(netSec.domainConfigs.length)}
+              />
+            </div>
+
+            {netSec.findings.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+                {netSec.findings.map((f, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: "rgba(0, 0, 0, 0.35)",
+                      border: "1px solid var(--border-glass)",
+                      borderRadius: "8px",
+                      padding: "10px 14px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
+                      <span className={`dot ${f.severity}`} />
+                      <b style={{ fontSize: "13px" }}>{f.title}</b>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>
+                      {f.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {netSec.pinSets.length > 0 && (
+              <div style={{ marginTop: "12px" }}>
+                <b style={{ fontSize: "12px", display: "block", marginBottom: "6px" }}>
+                  CONFIGURED CERTIFICATE PINS:
+                </b>
+                {netSec.pinSets.map((ps, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      fontSize: "11px",
+                      fontFamily: "var(--font-mono)",
+                      background: "rgba(0, 0, 0, 0.4)",
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Domains: {ps.domains.map((d) => `${d.name}${d.includeSubdomains ? " (subdomains)" : ""}`).join(", ")}
+                    <br />
+                    Pins: {ps.pins.map((p) => `${p.digest}: ${p.value}`).join(", ")}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="empty" style={{ padding: "16px" }}>
+            No custom network_security_config.xml declared. The application relies on default Android platform TLS rules and AndroidManifest usesCleartextTraffic settings.
+          </div>
+        )}
+      </div>
+
+      <div className="two">
+        <ListView
+          title="Extracted HTTP / HTTPS Endpoints"
+          items={analysis.urls}
+          empty="No web endpoints found in scanned bytecode."
+        />
+        <ListView
+          title="Discovered Network Domains"
+          items={analysis.domains}
+          empty="No external domains found."
+        />
+        <ListView
+          title="Embedded WebView Usage"
+          items={analysis.webViews}
+          empty="No WebViews detected."
+        />
+      </div>
     </div>
   );
 }
@@ -1571,6 +1808,68 @@ function SecurityView({ analysis }: { analysis: APKAnalysis }) {
         )}
       </div>
 
+      {/* Storage & Backup Security Audit */}
+      {analysis.storageAudit && (
+        <div className="panel full">
+          <div className="panel-title">
+            Storage, SharedPreferences & Backup Security Audit
+            <span className="badges">
+              {analysis.storageAudit.allowBackup === false ? (
+                <span className="success">Backup Blocked (Secure)</span>
+              ) : (
+                <span className="blue">Backup Permitted</span>
+              )}
+            </span>
+          </div>
+
+          <div className="meta-grid" style={{ marginBottom: "14px" }}>
+            <Meta
+              label="android:allowBackup"
+              value={analysis.storageAudit.allowBackup === false ? "false (Blocked)" : "true (Exposed)"}
+            />
+            <Meta
+              label="Scoped Storage Status"
+              value={analysis.storageAudit.managesAllFiles ? "MANAGE_EXTERNAL_STORAGE" : "Standard Scoped"}
+            />
+            <Meta
+              label="External Storage Perms"
+              value={analysis.storageAudit.usesExternalStorage ? "Requested (Shared)" : "Internal Only"}
+            />
+            <Meta
+              label="Insecure Creation Modes"
+              value={analysis.storageAudit.insecureModeFlagsFound.join(", ") || "None (Secure)"}
+            />
+          </div>
+
+          {analysis.storageAudit.findings.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {analysis.storageAudit.findings.map((f, i) => (
+                <div
+                  key={i}
+                  style={{
+                    background: "rgba(0, 0, 0, 0.35)",
+                    border: "1px solid var(--border-glass)",
+                    borderRadius: "8px",
+                    padding: "10px 14px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
+                    <span className={`dot ${f.severity}`} />
+                    <b style={{ fontSize: "13px" }}>{f.title}</b>
+                  </div>
+                  <p style={{ margin: "0 0 6px 0", fontSize: "12px", color: "var(--text-muted)" }}>
+                    {f.description}
+                  </p>
+                  <div style={{ fontSize: "11px", color: "var(--cyan)" }}>
+                    💡 Remediation: {f.recommendation}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Manifest & Binary Hardening Indicators */}
       <div className="panel full">
         <div className="panel-title">
@@ -1580,6 +1879,448 @@ function SecurityView({ analysis }: { analysis: APKAnalysis }) {
           analysis.findings.map((f, i) => <Finding key={i} f={f} />)
         ) : (
           <div className="empty">No security indicators triggered.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Trackers & Telemetry View based on Exodus Privacy catalog
+function TrackersView({ analysis }: { analysis: APKAnalysis }) {
+  const trackers = analysis.trackers || [];
+  const [filter, setFilter] = useState("");
+  const filtered = useMemo(() => {
+    if (!filter.trim()) return trackers;
+    return trackers.filter(
+      (t) =>
+        t.name.toLowerCase().includes(filter.toLowerCase()) ||
+        t.category.toLowerCase().includes(filter.toLowerCase())
+    );
+  }, [trackers, filter]);
+
+  const categories = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const t of trackers) {
+      map[t.category] = (map[t.category] || 0) + 1;
+    }
+    return map;
+  }, [trackers]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div className="panel full">
+        <div className="panel-title">
+          Exodus Privacy Tracker & Analytics Intelligence <span>{trackers.length} detected</span>
+        </div>
+
+        {/* Categories summary */}
+        <div className="meta-grid" style={{ marginBottom: "16px" }}>
+          <Meta label="Total Trackers" value={String(trackers.length)} />
+          <Meta label="Advertising SDKs" value={String(categories["Advertising"] || 0)} />
+          <Meta label="Analytics & Telemetry" value={String(categories["Analytics"] || 0)} />
+          <Meta label="Crash Reporters" value={String(categories["Crash Reporting"] || 0)} />
+          <Meta label="Profiling & CDP" value={String(categories["Profiling"] || 0)} />
+        </div>
+
+        <div className="search" style={{ marginBottom: "16px" }}>
+          <Search size={15} />
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter trackers by name or category (e.g. AdMob, Analytics, AppsFlyer)..."
+          />
+        </div>
+
+        {filtered.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {filtered.map((t) => (
+              <div
+                key={t.id}
+                style={{
+                  background: "rgba(0, 0, 0, 0.4)",
+                  border: "1px solid var(--border-glass)",
+                  borderRadius: "12px",
+                  padding: "16px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <Radar size={18} style={{ color: "var(--cyan)" }} />
+                    <b style={{ fontSize: "14px" }}>{t.name}</b>
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        padding: "2px 8px",
+                        borderRadius: "4px",
+                        background:
+                          t.category === "Advertising"
+                            ? "rgba(244, 63, 94, 0.15)"
+                            : t.category === "Analytics"
+                            ? "rgba(56, 189, 248, 0.15)"
+                            : "rgba(168, 85, 247, 0.15)",
+                        color:
+                          t.category === "Advertising"
+                            ? "var(--rose)"
+                            : t.category === "Analytics"
+                            ? "var(--cyan)"
+                            : "#c084fc",
+                        border: "1px solid var(--border-glass)",
+                      }}
+                    >
+                      {t.category}
+                    </span>
+                  </div>
+                  {t.website && (
+                    <a
+                      href={t.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        fontSize: "11px",
+                        color: "var(--text-muted)",
+                        textDecoration: "none",
+                      }}
+                    >
+                      <span>Documentation</span>
+                      <ArrowUpRight size={12} />
+                    </a>
+                  )}
+                </div>
+                <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 10px 0" }}>
+                  {t.description}
+                </p>
+                {t.matchedClasses.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-faint)", marginBottom: "4px" }}>
+                      MATCHED SIGNATURES ({t.matchedClasses.length}):
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {t.matchedClasses.map((c, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "11px",
+                            background: "rgba(255, 255, 255, 0.05)",
+                            color: "var(--text-muted)",
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                            border: "1px solid var(--border-glass)",
+                          }}
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty">
+            {filter.trim() ? "No matching trackers found." : "✓ Zero third-party trackers or telemetry SDKs detected."}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// APK Version Comparison & Diff View
+function APKDiffView({ currentAnalysis, history }: { currentAnalysis: APKAnalysis; history: APKAnalysis[] }) {
+  const otherAnalyses = useMemo(
+    () => history.filter((h) => h.id !== currentAnalysis.id),
+    [history, currentAnalysis.id]
+  );
+  const [selectedBaseId, setSelectedBaseId] = useState<string>(() => otherAnalyses[0]?.id || "");
+
+  const baseAnalysis = useMemo(
+    () => history.find((h) => h.id === selectedBaseId) || null,
+    [history, selectedBaseId]
+  );
+
+  const diffReport = useMemo(() => {
+    if (!baseAnalysis) return null;
+    return compareAPKs(baseAnalysis, currentAnalysis);
+  }, [baseAnalysis, currentAnalysis]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div className="panel full">
+        <div className="panel-title">
+          APK Version Diff & Security Regression Scanner
+        </div>
+
+        {otherAnalyses.length === 0 ? (
+          <div className="empty" style={{ padding: "30px 20px" }}>
+            <GitCompare size={36} style={{ marginBottom: "12px", opacity: 0.6 }} />
+            <b>No Previous APK Scans in Local Vault</b>
+            <p style={{ maxWidth: "460px", margin: "6px auto 0 auto", fontSize: "12px", color: "var(--text-muted)" }}>
+              Analyze another APK or different version of this app to compare permissions, new exported attack surfaces, added trackers, and security score regressions side-by-side.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-muted)" }}>
+                COMPARE BASELINE APK:
+              </span>
+              <select
+                value={selectedBaseId}
+                onChange={(e) => setSelectedBaseId(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  background: "rgba(0, 0, 0, 0.5)",
+                  border: "1px solid var(--border-glass)",
+                  borderRadius: "8px",
+                  color: "#fff",
+                  fontSize: "12px",
+                  fontFamily: "var(--font-mono)",
+                }}
+              >
+                {otherAnalyses.map((h) => (
+                  <option key={h.id} value={h.id}>
+                    {h.fileName} ({h.versionName || "v?"}) — {new Date(h.analyzedAt).toLocaleDateString()}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {diffReport && (
+              <>
+                {/* Metric Summary */}
+                <div className="meta-grid" style={{ marginBottom: "20px" }}>
+                  <Meta
+                    label="Size Delta"
+                    value={`${diffReport.sizeDeltaBytes >= 0 ? "+" : ""}${formatBytes(diffReport.sizeDeltaBytes)} (${diffReport.sizeDeltaPercent.toFixed(1)}%)`}
+                    mono
+                  />
+                  <Meta
+                    label="Risk Trend"
+                    value={
+                      diffReport.summary.riskTrend === "increased"
+                        ? "⚠️ Increased Risk"
+                        : diffReport.summary.riskTrend === "decreased"
+                        ? "✓ Reduced Risk"
+                        : "Stable Risk"
+                    }
+                  />
+                  <Meta
+                    label="Regressions Found"
+                    value={String(diffReport.summary.regressionsCount)}
+                  />
+                  <Meta
+                    label="Improvements"
+                    value={String(diffReport.summary.improvementsCount)}
+                  />
+                </div>
+
+                {/* Diff sections */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {/* New Critical/High Findings */}
+                  <div
+                    style={{
+                      background: "rgba(0, 0, 0, 0.4)",
+                      border: "1px solid var(--border-glass)",
+                      borderRadius: "12px",
+                      padding: "16px",
+                    }}
+                  >
+                    <b style={{ fontSize: "13px", display: "block", marginBottom: "8px", color: "var(--rose)" }}>
+                      🚨 Newly Introduced Vulnerabilities & Secrets ({diffReport.newCriticalFindings.length})
+                    </b>
+                    {diffReport.newCriticalFindings.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        {diffReport.newCriticalFindings.map((f, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              fontSize: "12px",
+                              background: "rgba(244, 63, 94, 0.1)",
+                              border: "1px solid rgba(244, 63, 94, 0.25)",
+                              padding: "6px 12px",
+                              borderRadius: "6px",
+                              color: "#fda4af",
+                            }}
+                          >
+                            + {f}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                        ✓ No new critical or high-severity vulnerabilities introduced in this build.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Permissions Delta */}
+                  <div
+                    style={{
+                      background: "rgba(0, 0, 0, 0.4)",
+                      border: "1px solid var(--border-glass)",
+                      borderRadius: "12px",
+                      padding: "16px",
+                    }}
+                  >
+                    <b style={{ fontSize: "13px", display: "block", marginBottom: "8px" }}>
+                      🔒 Permissions Diff (+{diffReport.permissions.added.length} / -{diffReport.permissions.removed.length})
+                    </b>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {diffReport.permissions.added.map((p, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "11px",
+                            background: "rgba(244, 63, 94, 0.15)",
+                            color: "var(--rose)",
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                            border: "1px solid rgba(244, 63, 94, 0.3)",
+                          }}
+                        >
+                          + {p}
+                        </span>
+                      ))}
+                      {diffReport.permissions.removed.map((p, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "11px",
+                            background: "rgba(52, 211, 153, 0.15)",
+                            color: "#34d399",
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                            border: "1px solid rgba(52, 211, 153, 0.3)",
+                          }}
+                        >
+                          - {p}
+                        </span>
+                      ))}
+                      {diffReport.permissions.added.length === 0 && diffReport.permissions.removed.length === 0 && (
+                        <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                          No permission changes between these versions.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Exported Components Delta */}
+                  <div
+                    style={{
+                      background: "rgba(0, 0, 0, 0.4)",
+                      border: "1px solid var(--border-glass)",
+                      borderRadius: "12px",
+                      padding: "16px",
+                    }}
+                  >
+                    <b style={{ fontSize: "13px", display: "block", marginBottom: "8px" }}>
+                      ⚡ Newly Exported Attack Surfaces (+{diffReport.exportedActivities.added.length + diffReport.exportedServices.added.length})
+                    </b>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {diffReport.exportedActivities.added.map((a, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "11px",
+                            background: "rgba(245, 158, 11, 0.15)",
+                            color: "var(--amber)",
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                            border: "1px solid rgba(245, 158, 11, 0.3)",
+                          }}
+                        >
+                          + Activity: {a}
+                        </span>
+                      ))}
+                      {diffReport.exportedServices.added.map((s, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "11px",
+                            background: "rgba(245, 158, 11, 0.15)",
+                            color: "var(--amber)",
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                            border: "1px solid rgba(245, 158, 11, 0.3)",
+                          }}
+                        >
+                          + Service: {s}
+                        </span>
+                      ))}
+                      {diffReport.exportedActivities.added.length === 0 && diffReport.exportedServices.added.length === 0 && (
+                        <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                          No newly exported components detected.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Trackers Delta */}
+                  <div
+                    style={{
+                      background: "rgba(0, 0, 0, 0.4)",
+                      border: "1px solid var(--border-glass)",
+                      borderRadius: "12px",
+                      padding: "16px",
+                    }}
+                  >
+                    <b style={{ fontSize: "13px", display: "block", marginBottom: "8px" }}>
+                      📡 Trackers & Telemetry Delta (+{diffReport.trackers.added.length} / -{diffReport.trackers.removed.length})
+                    </b>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                      {diffReport.trackers.added.map((t, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "11px",
+                            background: "rgba(244, 63, 94, 0.15)",
+                            color: "var(--rose)",
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          + {t}
+                        </span>
+                      ))}
+                      {diffReport.trackers.removed.map((t, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "11px",
+                            background: "rgba(52, 211, 153, 0.15)",
+                            color: "#34d399",
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          - {t}
+                        </span>
+                      ))}
+                      {diffReport.trackers.added.length === 0 && diffReport.trackers.removed.length === 0 && (
+                        <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                          Trackers and analytics SDKs are identical.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -1731,6 +2472,544 @@ function DeepLinksView({ analysis }: { analysis: APKAnalysis }) {
           No deep links or custom URI schemes matched your criteria.
         </div>
       )}
+    </div>
+  );
+}
+
+function FridaView({ analysis }: { analysis: APKAnalysis }) {
+  const [selectedSnippetId, setSelectedSnippetId] = useState<string>("universal-ssl-bypass");
+  const [customClass, setCustomClass] = useState<string>("");
+  const [customMethod, setCustomMethod] = useState<string>("$init");
+  const [customScript, setCustomScript] = useState<string>("");
+  const [copied, setCopied] = useState<boolean>(false);
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+
+  const exportedActs = useMemo(
+    () => (analysis.activities || []).filter((a) => a.exported).map((a) => (a.name.startsWith(".") ? `${analysis.packageName}${a.name}` : a.name)),
+    [analysis]
+  );
+  const exportedRecs = useMemo(
+    () => (analysis.receivers || []).filter((r) => r.exported).map((r) => (r.name.startsWith(".") ? `${analysis.packageName}${r.name}` : r.name)),
+    [analysis]
+  );
+  const exportedSvcs = useMemo(
+    () => (analysis.services || []).filter((s) => s.exported).map((s) => (s.name.startsWith(".") ? `${analysis.packageName}${s.name}` : s.name)),
+    [analysis]
+  );
+
+  const snippets = useMemo(() => {
+    return generateFridaScripts(analysis.packageName || "com.example.app", exportedActs, exportedRecs, exportedSvcs);
+  }, [analysis, exportedActs, exportedRecs, exportedSvcs]);
+
+  const allClasses = useMemo(() => {
+    const list: string[] = [];
+    (analysis.dexFiles || []).forEach((dex) => {
+      (dex.classes || []).forEach((cls) => {
+        if (!list.includes(cls)) list.push(cls);
+      });
+    });
+    return list;
+  }, [analysis]);
+
+  const activeSnippet = useMemo(() => {
+    if (selectedSnippetId === "custom") {
+      return {
+        id: "custom",
+        title: `Custom Hook: ${customClass || "TargetClass"}.${customMethod || "$init"}`,
+        category: "custom" as const,
+        description: "Dynamic Frida JavaScript instrumentation hook for arbitrary Dalvik/ART class methods.",
+        code: customScript || generateCustomMethodHook(customClass || "com.example.app.MainActivity", customMethod || "$init"),
+      };
+    }
+    return snippets.find((s) => s.id === selectedSnippetId) || snippets[0];
+  }, [selectedSnippetId, snippets, customScript, customClass, customMethod]);
+
+  function handleGenerateCustom() {
+    if (!customClass.trim()) return;
+    const code = generateCustomMethodHook(customClass.trim(), customMethod.trim() || "$init");
+    setCustomScript(code);
+    setSelectedSnippetId("custom");
+  }
+
+  function handleCopy() {
+    if (!activeSnippet) return;
+    navigator.clipboard.writeText(activeSnippet.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleDownload() {
+    if (!activeSnippet) return;
+    const blob = new Blob([activeSnippet.code], { type: "text/javascript" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `frida_${activeSnippet.id}_${(analysis.packageName || "app").replace(/[^a-zA-Z0-9]/g, "_")}.js`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const filteredSnippets = useMemo(() => {
+    if (activeCategory === "all") return snippets;
+    return snippets.filter((s) => s.category === activeCategory);
+  }, [snippets, activeCategory]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* Top Banner */}
+      <div className="panel full" style={{ padding: "20px 24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+          <div>
+            <div style={{ fontSize: "18px", fontWeight: 800, color: "#ffffff", display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+              <Terminal size={20} style={{ color: "#38bdf8" }} />
+              1-Click Frida Hook Generator
+            </div>
+            <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+              Auto-generate production-grade dynamic instrumentation scripts tailored to {analysis.packageName || "this APK"}.
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button className="primary" onClick={handleCopy} style={{ padding: "8px 16px" }}>
+              {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied JS" : "Copy Frida Script"}
+            </button>
+            <button className="secondary" onClick={handleDownload} style={{ padding: "8px 16px" }}>
+              <Download size={14} /> Download .js Snippet
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "20px" }}>
+        {/* Left Side: Snippet Library + Custom Generator */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {/* Category Filter */}
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            {["all", "ssl", "root", "crypto", "components"].map((cat) => (
+              <button
+                key={cat}
+                className="secondary"
+                style={{
+                  padding: "4px 10px",
+                  fontSize: "11px",
+                  textTransform: "uppercase",
+                  background: activeCategory === cat ? "rgba(56, 189, 248, 0.18)" : undefined,
+                  borderColor: activeCategory === cat ? "rgba(56, 189, 248, 0.5)" : undefined,
+                  color: activeCategory === cat ? "#38bdf8" : undefined,
+                }}
+                onClick={() => setActiveCategory(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Preset Snippets */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {filteredSnippets.map((s) => (
+              <div
+                key={s.id}
+                onClick={() => setSelectedSnippetId(s.id)}
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: "12px",
+                  cursor: "pointer",
+                  background: selectedSnippetId === s.id ? "rgba(56, 189, 248, 0.1)" : "var(--bg-card)",
+                  border: `1px solid ${selectedSnippetId === s.id ? "rgba(56, 189, 248, 0.4)" : "var(--border-glass)"}`,
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff", marginBottom: "4px" }}>
+                  {s.title}
+                </div>
+                <div style={{ fontSize: "11.5px", color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  {s.description}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Interactive Custom Method Hook Generator */}
+          <div className="panel" style={{ padding: "16px", marginTop: "8px" }}>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff", marginBottom: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <Zap size={14} style={{ color: "#f59e0b" }} />
+              Custom Class & Method Hook
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div>
+                <label style={{ fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "3px" }}>
+                  Target Class Name:
+                </label>
+                <input
+                  list="apk-class-list"
+                  placeholder="e.g. com.android.insecurebankv2.PostLogin"
+                  value={customClass}
+                  onChange={(e) => setCustomClass(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    background: "rgba(0,0,0,0.4)",
+                    border: "1px solid var(--border-glass)",
+                    color: "#ffffff",
+                    fontSize: "11.5px",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                />
+                <datalist id="apk-class-list">
+                  {allClasses.slice(0, 100).map((c, i) => (
+                    <option key={i} value={c} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div>
+                <label style={{ fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "3px" }}>
+                  Method Name ($init for constructor):
+                </label>
+                <input
+                  placeholder="e.g. checkPassword, doTransfer, $init"
+                  value={customMethod}
+                  onChange={(e) => setCustomMethod(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    background: "rgba(0,0,0,0.4)",
+                    border: "1px solid var(--border-glass)",
+                    color: "#ffffff",
+                    fontSize: "11.5px",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                />
+              </div>
+
+              <button
+                className="secondary"
+                onClick={handleGenerateCustom}
+                style={{
+                  marginTop: "6px",
+                  padding: "8px 12px",
+                  fontSize: "12px",
+                  justifyContent: "center",
+                  borderColor: "rgba(245, 158, 11, 0.4)",
+                  color: "#f59e0b",
+                }}
+              >
+                <Sparkles size={13} /> Generate Hook Script
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Code Viewer & Quick Execution Instructions */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div
+            style={{
+              background: "rgba(56, 189, 248, 0.05)",
+              border: "1px solid rgba(56, 189, 248, 0.2)",
+              borderRadius: "10px",
+              padding: "10px 14px",
+              fontSize: "12px",
+              color: "#94a3b8",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "8px",
+            }}
+          >
+            <div>
+              <b>Frida Execution:</b>{" "}
+              <code style={{ color: "#38bdf8", fontFamily: "var(--font-mono)" }}>
+                frida -U -f {analysis.packageName || "com.target.package"} -l hook.js
+              </code>
+            </div>
+            <button
+              className="secondary"
+              style={{ padding: "3px 8px", fontSize: "11px" }}
+              onClick={() => {
+                navigator.clipboard.writeText(`frida -U -f ${analysis.packageName || "com.target.package"} -l hook.js`);
+              }}
+            >
+              <Copy size={11} /> Copy CLI Command
+            </button>
+          </div>
+
+          <CodePanel
+            title={`${activeSnippet.title} (.js)`}
+            code={activeSnippet.code}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdbAssistantView({ analysis }: { analysis: APKAnalysis }) {
+  const [search, setSearch] = useState("");
+  const [selectedCat, setSelectedCat] = useState<string>("all");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [extraArgs, setExtraArgs] = useState<string>("");
+
+  const rawCommands = useMemo(() => {
+    return generateAdbCommands(
+      analysis.packageName || "com.example.app",
+      analysis.activities,
+      analysis.receivers,
+      analysis.services,
+      analysis.providers,
+      analysis.deepLinks,
+      analysis.storageAudit?.allowBackup ?? true
+    );
+  }, [analysis]);
+
+  const commands = useMemo(() => {
+    if (!extraArgs.trim()) return rawCommands;
+    return rawCommands.map((cmd) => {
+      if (cmd.category === "activity" || cmd.category === "receiver" || cmd.category === "service") {
+        return {
+          ...cmd,
+          command: `${cmd.command} ${extraArgs.trim()}`,
+        };
+      }
+      return cmd;
+    });
+  }, [rawCommands, extraArgs]);
+
+  const filtered = useMemo(() => {
+    return commands.filter((c) => {
+      const matchCat = selectedCat === "all" || c.category === selectedCat;
+      const matchSearch =
+        c.title.toLowerCase().includes(search.toLowerCase()) ||
+        c.command.toLowerCase().includes(search.toLowerCase()) ||
+        c.description.toLowerCase().includes(search.toLowerCase());
+      return matchCat && matchSearch;
+    });
+  }, [commands, selectedCat, search]);
+
+  function copyCmd(cmd: string, id: string) {
+    navigator.clipboard.writeText(cmd);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
+
+  function downloadShellScript() {
+    const script = generateAdbExploitScript(analysis.packageName || "com.example.app", commands);
+    const blob = new Blob([script], { type: "text/x-sh" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `exploit_poc_${(analysis.packageName || "app").replace(/[^a-zA-Z0-9]/g, "_")}.sh`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadBatchScript() {
+    const batScript = `@echo off
+rem APKLens ADB Batch POC Script
+rem Package: ${analysis.packageName || "app"}
+
+echo [*] Testing device connection...
+adb get-state || (echo [-] No Android device found && exit /b 1)
+
+${commands
+  .map(
+    (c) => `echo [+] Executing: ${c.title}
+${c.command}
+timeout /t 1 >nul`
+  )
+  .join("\n\n")}
+
+echo [!] Completed ADB sequence.
+pause
+`;
+    const blob = new Blob([batScript], { type: "application/bat" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `exploit_poc_${(analysis.packageName || "app").replace(/[^a-zA-Z0-9]/g, "_")}.bat`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* Top Banner */}
+      <div className="panel full" style={{ padding: "20px 24px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+          <div>
+            <div style={{ fontSize: "18px", fontWeight: 800, color: "#ffffff", display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+              <Radio size={20} style={{ color: "#34d399" }} />
+              Interactive ADB Exploit Assistant
+            </div>
+            <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+              One-click ADB testing commands for exported activities, broadcast receivers, services, content providers, and backups.
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button className="primary" onClick={downloadShellScript} style={{ padding: "8px 16px" }}>
+              <Download size={14} /> Download Bash Script (.sh)
+            </button>
+            <button className="secondary" onClick={downloadBatchScript} style={{ padding: "8px 16px" }}>
+              <Download size={14} /> Download Windows Batch (.bat)
+            </button>
+          </div>
+        </div>
+
+        {/* Extra Intent Arguments Customizer */}
+        <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid rgba(255, 255, 255, 0.06)", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "#cbd5e1" }}>
+            Inject Intent Extra Parameters:
+          </span>
+          <input
+            placeholder="e.g. --es user admin --ez debug true --ei role 1"
+            value={extraArgs}
+            onChange={(e) => setExtraArgs(e.target.value)}
+            style={{
+              flex: 1,
+              minWidth: "260px",
+              padding: "6px 12px",
+              borderRadius: "6px",
+              background: "rgba(0,0,0,0.3)",
+              border: "1px solid var(--border-glass)",
+              color: "#ffffff",
+              fontSize: "12px",
+              fontFamily: "var(--font-mono)",
+            }}
+          />
+          {extraArgs && (
+            <button
+              className="secondary"
+              style={{ padding: "4px 8px", fontSize: "11px" }}
+              onClick={() => setExtraArgs("")}
+            >
+              Clear Extras
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          {["all", "activity", "receiver", "service", "provider", "deeplink", "backup", "inspect"].map((cat) => (
+            <button
+              key={cat}
+              className="secondary"
+              style={{
+                padding: "5px 12px",
+                fontSize: "11px",
+                textTransform: "uppercase",
+                background: selectedCat === cat ? "rgba(52, 211, 153, 0.18)" : undefined,
+                borderColor: selectedCat === cat ? "rgba(52, 211, 153, 0.5)" : undefined,
+                color: selectedCat === cat ? "#34d399" : undefined,
+              }}
+              onClick={() => setSelectedCat(cat)}
+            >
+              {cat} ({commands.filter((c) => cat === "all" || c.category === cat).length})
+            </button>
+          ))}
+        </div>
+
+        <div className="search" style={{ minWidth: "280px" }}>
+          <Search size={14} />
+          <input
+            placeholder="Search commands or components..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Command Cards List */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {filtered.length ? (
+          filtered.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                background: "var(--bg-card)",
+                border: `1px solid ${
+                  item.risk === "CRITICAL"
+                    ? "rgba(239, 68, 68, 0.4)"
+                    : item.risk === "HIGH"
+                    ? "rgba(245, 158, 11, 0.4)"
+                    : "var(--border-glass)"
+                }`,
+                borderRadius: "14px",
+                padding: "16px 20px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span
+                    style={{
+                      fontSize: "10.5px",
+                      fontWeight: 800,
+                      padding: "2px 8px",
+                      borderRadius: "6px",
+                      background:
+                        item.risk === "CRITICAL"
+                          ? "rgba(239, 68, 68, 0.2)"
+                          : item.risk === "HIGH"
+                          ? "rgba(245, 158, 11, 0.2)"
+                          : "rgba(56, 189, 248, 0.2)",
+                      color:
+                        item.risk === "CRITICAL"
+                          ? "#f87171"
+                          : item.risk === "HIGH"
+                          ? "#fbbf24"
+                          : "#38bdf8",
+                    }}
+                  >
+                    {item.risk}
+                  </span>
+                  <b style={{ color: "#ffffff", fontSize: "14px" }}>{item.title}</b>
+                </div>
+
+                <button
+                  className="primary"
+                  onClick={() => copyCmd(item.command, item.id)}
+                  style={{ padding: "5px 12px", fontSize: "12px" }}
+                >
+                  {copiedId === item.id ? <Check size={12} /> : <Copy size={12} />}
+                  {copiedId === item.id ? "Copied to Clipboard!" : "Copy ADB Command"}
+                </button>
+              </div>
+
+              <div style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.4 }}>
+                {item.description}
+              </div>
+
+              {/* Command Code Box */}
+              <div
+                style={{
+                  background: "#03060d",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "12px",
+                  color: "#38bdf8",
+                  overflowX: "auto",
+                  border: "1px solid rgba(255, 255, 255, 0.05)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "10px",
+                }}
+              >
+                <span>{item.command}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="empty">No ADB commands matched your filter criteria.</div>
+        )}
+      </div>
     </div>
   );
 }
