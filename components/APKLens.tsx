@@ -860,7 +860,7 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
   }
 
   async function decompile(className: string, dexPath?: string) {
-    // If already in session cache, open immediately with 0ms delay!
+    // If already in session cache, open immediately
     if (decompiledMap[className]) {
       setActiveClassName(className);
       if (typeof window !== "undefined") {
@@ -877,89 +877,98 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
     setDecompileError("");
     setProgressState({
       className,
-      percent: 15,
+      percent: 8,
+      stage: "Waking up JADX engine (Render cold-start may take ~30s)...",
+    });
+
+    // Warm-up ping — tells Render to wake up BEFORE we send the heavy payload
+    try {
+      const pingCtrl = new AbortController();
+      const pingTimeout = setTimeout(() => pingCtrl.abort(), 35000);
+      await fetch(`${backendUrl.replace(/\/$/, "")}/health`, { signal: pingCtrl.signal }).catch(() => {});
+      clearTimeout(pingTimeout);
+    } catch { /* ignore ping errors */ }
+
+    setProgressState({
+      className,
+      percent: 18,
       stage: "Allocating isolated container & loading Dalvik bytecode...",
     });
 
-    const timer1 = setTimeout(() => {
-      setProgressState((prev) =>
-        prev
-          ? {
-              ...prev,
-              percent: 42,
-              stage: "Parsing DEX header and resolving type cross-references...",
-            }
-          : null
-      );
-    }, 450);
+    const timer1 = setTimeout(() =>
+      setProgressState(prev => prev ? { ...prev, percent: 42, stage: "Parsing DEX header and resolving type cross-references..." } : null)
+    , 600);
 
-    const timer2 = setTimeout(() => {
-      setProgressState((prev) =>
-        prev
-          ? {
-              ...prev,
-              percent: 72,
-              stage: "Reconstructing Abstract Syntax Tree (AST) & SSA registers...",
-            }
-          : null
-      );
-    }, 1250);
+    const timer2 = setTimeout(() =>
+      setProgressState(prev => prev ? { ...prev, percent: 72, stage: "Reconstructing Abstract Syntax Tree (AST) & SSA registers..." } : null)
+    , 1800);
 
-    const timer3 = setTimeout(() => {
-      setProgressState((prev) =>
-        prev
-          ? {
-              ...prev,
-              percent: 89,
-              stage: "Synthesizing typed Java / Kotlin class source code...",
-            }
-          : null
-      );
-    }, 2300);
+    const timer3 = setTimeout(() =>
+      setProgressState(prev => prev ? { ...prev, percent: 89, stage: "Synthesizing typed Java / Kotlin class source code..." } : null)
+    , 3500);
 
-    try {
-      const formData = new FormData();
-
-      let fileToSend: Blob | null = null;
-      if (dexPath) {
-        fileToSend = dexBlobCache.get(`${analysis.sha256}:${dexPath}`) || null;
-      }
-      if (!fileToSend) {
-        fileToSend = dexBlobCache.get(`${analysis.sha256}:primary`) || null;
-      }
-      if (!fileToSend && apkFile) {
-        fileToSend = apkFile;
-      }
-
-      if (!fileToSend) {
-        throw new Error("Bytecode source is not available. Please re-select the APK file.");
-      }
-
-      formData.append("file", fileToSend, fileToSend instanceof File ? fileToSend.name : "classes.dex");
-      formData.append("className", className);
-
-      const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/decompile-class`, {
-        method: "POST",
-        body: formData,
-      });
-
+    const cleanup = () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
       clearTimeout(timer3);
+    };
+
+    // Inner fetch with timeout + retry
+    async function attemptDecompile(attempt: number): Promise<Response> {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+      try {
+        const formData = new FormData();
+        let fileToSend: Blob | null = null;
+        if (dexPath) fileToSend = dexBlobCache.get(`${analysis.sha256}:${dexPath}`) || null;
+        if (!fileToSend) fileToSend = dexBlobCache.get(`${analysis.sha256}:primary`) || null;
+        if (!fileToSend && apkFile) fileToSend = apkFile;
+        if (!fileToSend) throw new Error("Bytecode source is not available. Please re-select the APK file.");
+
+        formData.append("file", fileToSend, fileToSend instanceof File ? fileToSend.name : "classes.dex");
+        formData.append("className", className);
+
+        const res = await fetch(`${backendUrl.replace(/\/$/, "")}/api/decompile-class`, {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        return res;
+      } catch (e) {
+        clearTimeout(timeoutId);
+        if (attempt < 2) {
+          // Retry once after a brief delay with warm-up message
+          setProgressState(prev => prev ? {
+            ...prev,
+            percent: 30,
+            stage: `Server warming up, retrying (attempt ${attempt + 1}/2)...`,
+          } : null);
+          await new Promise(r => setTimeout(r, 4000));
+          return attemptDecompile(attempt + 1);
+        }
+        throw e;
+      }
+    }
+
+    try {
+      const res = await attemptDecompile(1);
+      cleanup();
 
       if (!res.ok) {
+        if (res.status === 504 || res.status === 502 || res.status === 503) {
+          throw new Error(
+            `The JADX decompiler service on Render is temporarily unavailable (HTTP ${res.status}). ` +
+            `This usually means the server is still warming up after inactivity. ` +
+            `Please wait 30 seconds and click Decompile again.`
+          );
+        }
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || err.detail || `Decompilation failed (HTTP ${res.status})`);
       }
 
       const data = await res.json();
-
-      setProgressState({
-        className,
-        percent: 100,
-        stage: "Decompilation complete! Formatting syntax...",
-      });
-
+      setProgressState({ className, percent: 100, stage: "Decompilation complete! Formatting syntax..." });
       setTimeout(() => {
         const nextMap = { ...decompiledMap, [className]: data.code };
         setDecompiledMap(nextMap);
@@ -971,11 +980,15 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
         setProgressState(null);
       }, 400);
     } catch (e) {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
+      cleanup();
       setProgressState(null);
-      setDecompileError(e instanceof Error ? e.message : "Decompilation failed.");
+      const msg = e instanceof Error ? e.message : "Decompilation failed.";
+      const isTimeout = msg.includes("abort") || msg.includes("AbortError") || msg.includes("timed out");
+      setDecompileError(
+        isTimeout
+          ? "Decompilation timed out. The JADX engine on Render may be cold-starting (takes ~30s). Please wait a moment and try again."
+          : msg
+      );
     }
   }
 
@@ -1104,8 +1117,22 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
       )}
 
       {decompileError && (
-        <div className="error" style={{ marginBottom: "1.2rem" }}>
-          <AlertCircle size={16} /> {decompileError}
+        <div className="decompile-error-box" style={{ marginBottom: "1.2rem" }}>
+          <div className="decompile-error-top">
+            <AlertCircle size={16} style={{ flexShrink: 0, color: "#f87171" }} />
+            <span>{decompileError}</span>
+          </div>
+          {(decompileError.includes("warming up") || decompileError.includes("cold") || decompileError.includes("504") || decompileError.includes("timed out") || decompileError.includes("unavailable")) && (
+            <div className="decompile-error-actions">
+              <span className="decompile-error-tip">💡 Render free tier sleeps after inactivity. The engine needs ~30s to wake up.</span>
+              <button
+                className="decompile-retry-btn"
+                onClick={() => { setDecompileError(""); if (activeClassName) decompile(activeClassName); }}
+              >
+                🔄 Try Again
+              </button>
+            </div>
+          )}
         </div>
       )}
 
