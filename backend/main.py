@@ -52,6 +52,10 @@ def decompile_class_info():
         "usage": "Send a POST request with multipart/form-data containing 'file' and 'className'"
     }
 
+import hashlib
+
+class_cache: dict[str, str] = {}
+
 @app.post("/api/decompile-class")
 async def decompile_class(
     file: UploadFile = File(...),
@@ -59,20 +63,36 @@ async def decompile_class(
 ):
     """
     Decompile a single target class from uploaded classes.dex or .apk file.
-    Ultra-fast single-threaded compilation with memory bounds.
+    Ultra-fast single-threaded compilation with strict memory bounds and in-memory cache.
     """
+    # Normalize class name: e.g. "Lcom/android/insecurebankv2/PostLogin;" -> "com.android.insecurebankv2.PostLogin"
+    clean_class = className.strip().lstrip("L").rstrip(";").replace("/", ".")
+    
+    file_bytes = await file.read()
+    file_hash = hashlib.sha256(file_bytes).hexdigest()
+    cache_key = f"{file_hash}:{clean_class}"
+
+    if cache_key in class_cache:
+        return {
+            "className": clean_class,
+            "code": class_cache[cache_key],
+            "status": "cached"
+        }
+
     temp_dir = tempfile.mkdtemp(prefix="apklens_jadx_")
     try:
-        # Normalize class name: e.g. "Lcom/android/insecurebankv2/PostLogin;" -> "com.android.insecurebankv2.PostLogin"
-        clean_class = className.strip().lstrip("L").rstrip(";").replace("/", ".")
         input_filename = file.filename or "classes.dex"
         input_path = os.path.join(temp_dir, input_filename)
         
         with open(input_path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
+            f.write(file_bytes)
 
         target_file = os.path.join(temp_dir, "decompiled.java")
         
+        # Configure JVM memory ceiling to avoid container OOM/thrashing on Render free tier
+        jadx_env = os.environ.copy()
+        jadx_env["JAVA_OPTS"] = "-Xmx384m -XX:+UseSerialGC -XX:CICompilerCount=2"
+
         # Primary strategy: direct single-class extraction to target file
         cmd = [
             "jadx",
@@ -83,7 +103,14 @@ async def decompile_class(
             "--single-class-output", target_file,
             input_path
         ]
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=50)
+        res = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=45,
+            env=jadx_env
+        )
 
         found_code = None
         if os.path.exists(target_file) and os.path.getsize(target_file) > 0:
@@ -102,7 +129,14 @@ async def decompile_class(
                 "-d", out_dir,
                 input_path
             ]
-            res = subprocess.run(cmd2, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=50)
+            res = subprocess.run(
+                cmd2,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=45,
+                env=jadx_env
+            )
 
             sources_dir = os.path.join(out_dir, "sources")
             target_basename = clean_class.split(".")[-1] + ".java"
@@ -122,6 +156,11 @@ async def decompile_class(
                     "jadx_stderr": res.stderr
                 }
             )
+
+        # Store in cache (limit to 250 items to avoid RAM growth)
+        if len(class_cache) > 250:
+            class_cache.clear()
+        class_cache[cache_key] = found_code
 
         return {
             "className": clean_class,

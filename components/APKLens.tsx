@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, AlertCircle, Archive, ArrowLeft, Box, Check, CheckCircle2,
-  ChevronDown, ChevronRight, Code2, Copy, Cpu, Eye, FileCode2, FileText,
-  Folder, Globe, KeyRound, LayoutDashboard, Lock, Package, Search,
+  ChevronDown, ChevronRight, Code2, Copy, Cpu, Database, Download, Eye, FileCode2, FileText,
+  Folder, Globe, KeyRound, Layers, LayoutDashboard, Linkedin, Lock, Package, Radio, Search,
   Server, Settings, Shield, ShieldAlert, ShieldCheck, Smartphone,
   Sparkles, Trash2, Upload, X, XCircle, Zap
 } from "lucide-react";
@@ -175,11 +175,11 @@ export default function APKLens() {
       <header className="topbar">
         <div className="brand" onClick={() => setView("landing")} style={{ cursor: "pointer" }}>
           <div className="brandmark">
-            <Shield size={20} className="brandmark-icon" />
+            <img src="/icon.svg" alt="APKLens" style={{ width: "22px", height: "22px" }} />
           </div>
           <div>
             <div className="brand-title">
-              APKLens <span className="version-pill">v2.0</span>
+              APKLens
             </div>
             <span className="brand-sub">Android Security & Architecture Suite</span>
           </div>
@@ -192,6 +192,17 @@ export default function APKLens() {
         </nav>
 
         <div className="top-actions">
+          <a
+            href="https://www.linkedin.com/in/jojin-john/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-tab-btn"
+            style={{ textDecoration: "none", gap: "6px" }}
+            title="Developer LinkedIn Profile"
+          >
+            <Linkedin size={13} style={{ color: "#60a5fa" }} />
+            <span>Jojin John</span>
+          </a>
           <div className="privacy-badge">
             <CheckCircle2 size={14} /> 100% In-Browser Analysis
           </div>
@@ -309,9 +320,13 @@ export default function APKLens() {
               {/* Header Box */}
               <div className="analysis-head">
                 <div className="app-title">
-                  <div className="android-icon">
-                    <Smartphone size={30} />
-                  </div>
+                  {analysis.icon ? (
+                    <img src={analysis.icon} alt="App Icon" className="app-real-icon" />
+                  ) : (
+                    <div className="android-icon">
+                      <Smartphone size={30} />
+                    </div>
+                  )}
                   <div>
                     <h1>{analysis.fileName}</h1>
                     <div className="badges">
@@ -565,34 +580,111 @@ function FilesView({
 }
 
 function Components({ analysis }: { analysis: APKAnalysis }) {
+  const [query, setQuery] = useState("");
+
+  const groups = [
+    {
+      key: "activities",
+      title: "Activities",
+      icon: <Layers size={17} style={{ color: "#818cf8" }} />,
+      items: analysis.activities,
+      emptyMsg: "No activities declared in AndroidManifest.xml"
+    },
+    {
+      key: "services",
+      title: "Background Services",
+      icon: <Cpu size={17} style={{ color: "#38bdf8" }} />,
+      items: analysis.services,
+      emptyMsg: "No background services declared in AndroidManifest.xml"
+    },
+    {
+      key: "receivers",
+      title: "Broadcast Receivers",
+      icon: <Radio size={17} style={{ color: "#34d399" }} />,
+      items: analysis.receivers,
+      emptyMsg: "No broadcast receivers declared in AndroidManifest.xml"
+    },
+    {
+      key: "providers",
+      title: "Content Providers",
+      icon: <Database size={17} style={{ color: "#fbbf24" }} />,
+      items: analysis.providers,
+      emptyMsg: "No content providers declared in AndroidManifest.xml"
+    }
+  ];
+
   return (
-    <div className="three">
-      {(["Activities", "Services", "Receivers"] as const).map((kind) => {
-        const arr = analysis[kind.toLowerCase() as "activities" | "services" | "receivers"];
-        return (
-          <div className="panel" key={kind}>
-            <div className="panel-title">
-              {kind} <span>{arr.length}</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      {/* Component Search & Summary Bar */}
+      <div className="panel full" style={{ padding: "16px 20px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "14px" }}>
+          <div>
+            <div style={{ fontSize: "16px", fontWeight: 700, color: "#ffffff", marginBottom: "4px" }}>
+              Android Application Components
             </div>
-            {arr.map((x: any, i: number) => (
-              <div className="component" key={i}>
-                <b>{x.name}</b>
-                <span>{x.exported === null ? "exported: default" : `exported: ${x.exported}`}</span>
-              </div>
-            ))}
+            <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+              {analysis.activities.length} Activities · {analysis.services.length} Services · {analysis.receivers.length} Receivers · {analysis.providers.length} Providers
+            </div>
           </div>
-        );
-      })}
-      <div className="panel">
-        <div className="panel-title">
-          Content Providers <span>{analysis.providers.length}</span>
+          <div className="search" style={{ margin: 0, minWidth: "280px" }}>
+            <Search size={15} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search components by class name..."
+            />
+          </div>
         </div>
-        {analysis.providers.map((x: any, i: number) => (
-          <div className="component" key={i}>
-            <b>{x.name}</b>
-            <span>exported: {x.exported ?? "default"}</span>
-          </div>
-        ))}
+      </div>
+
+      {/* 2x2 Grid of Component Groups */}
+      <div className="components-grid">
+        {groups.map((g) => {
+          const filteredItems = g.items.filter((x: any) =>
+            !query.trim() || x.name.toLowerCase().includes(query.toLowerCase())
+          );
+
+          return (
+            <div className="component-panel" key={g.key}>
+              <div className="component-panel-head">
+                <div className="component-panel-title">
+                  {g.icon}
+                  <span>{g.title}</span>
+                </div>
+                <span className="component-count-pill">
+                  {filteredItems.length}
+                </span>
+              </div>
+
+              {filteredItems.length > 0 ? (
+                <div style={{ maxHeight: "420px", overflowY: "auto", paddingRight: "4px" }}>
+                  {filteredItems.map((x: any, i: number) => {
+                    const isExported = x.exported === "true" || x.exported === true;
+                    const isPrivate = x.exported === "false" || x.exported === false;
+
+                    return (
+                      <div className="component-item" key={i}>
+                        <span className="component-item-name">{x.name}</span>
+                        <span
+                          className={`component-badge ${
+                            isExported ? "exported" : isPrivate ? "private" : "default"
+                          }`}
+                        >
+                          {isExported ? "Exported (Public)" : isPrivate ? "Private (Internal)" : "Default"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="component-empty">
+                  {g.icon}
+                  <span>{query.trim() ? "No matching components found." : g.emptyMsg}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -614,7 +706,26 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
   const [showConfig, setShowConfig] = useState(false);
   const [urlInput, setUrlInput] = useState(backendUrl || "https://apklens.onrender.com");
   const [statusMsg, setStatusMsg] = useState("");
-  const [activeCode, setActiveCode] = useState<{ className: string; code: string } | null>(null);
+  // Persistent Decompiled Cache across tabs within session
+  const [decompiledMap, setDecompiledMap] = useState<Record<string, string>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem(`apklens_decompiled_${analysis.id}`);
+        return stored ? JSON.parse(stored) : {};
+      } catch {}
+    }
+    return {};
+  });
+
+  const [activeClassName, setActiveClassName] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return sessionStorage.getItem(`apklens_active_class_${analysis.id}`) || "";
+      } catch {}
+    }
+    return "";
+  });
+
   const [copied, setCopied] = useState(false);
   const [decompileError, setDecompileError] = useState("");
 
@@ -660,6 +771,15 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
   }
 
   async function decompile(className: string, dexPath?: string) {
+    // If already in session cache, open immediately with 0ms delay!
+    if (decompiledMap[className]) {
+      setActiveClassName(className);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(`apklens_active_class_${analysis.id}`, className);
+      }
+      return;
+    }
+
     if (!backendUrl) {
       setShowConfig(true);
       return;
@@ -669,50 +789,48 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
     setProgressState({
       className,
       percent: 15,
-      stage: "Allocating isolated sandbox & preparing Dalvik bytecode...",
+      stage: "Allocating isolated container & loading Dalvik bytecode...",
     });
 
-    // Animate stages smoothly while network request is in-flight
     const timer1 = setTimeout(() => {
       setProgressState((prev) =>
         prev
           ? {
               ...prev,
-              percent: 40,
+              percent: 42,
               stage: "Parsing DEX header and resolving type cross-references...",
             }
           : null
       );
-    }, 400);
+    }, 450);
 
     const timer2 = setTimeout(() => {
       setProgressState((prev) =>
         prev
           ? {
               ...prev,
-              percent: 70,
+              percent: 72,
               stage: "Reconstructing Abstract Syntax Tree (AST) & SSA registers...",
             }
           : null
       );
-    }, 1200);
+    }, 1250);
 
     const timer3 = setTimeout(() => {
       setProgressState((prev) =>
         prev
           ? {
               ...prev,
-              percent: 88,
+              percent: 89,
               stage: "Synthesizing typed Java / Kotlin class source code...",
             }
           : null
       );
-    }, 2200);
+    }, 2300);
 
     try {
       const formData = new FormData();
 
-      // Check if we have the extracted DEX blob cached in memory (10x faster than uploading entire APK!)
       let fileToSend: Blob | null = null;
       if (dexPath) {
         fileToSend = dexBlobCache.get(`${analysis.sha256}:${dexPath}`) || null;
@@ -747,7 +865,6 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
 
       const data = await res.json();
 
-      // 100% finished state
       setProgressState({
         className,
         percent: 100,
@@ -755,7 +872,13 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
       });
 
       setTimeout(() => {
-        setActiveCode({ className, code: data.code });
+        const nextMap = { ...decompiledMap, [className]: data.code };
+        setDecompiledMap(nextMap);
+        setActiveClassName(className);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(`apklens_decompiled_${analysis.id}`, JSON.stringify(nextMap));
+          sessionStorage.setItem(`apklens_active_class_${analysis.id}`, className);
+        }
         setProgressState(null);
       }, 400);
     } catch (e) {
@@ -767,9 +890,27 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
     }
   }
 
+  function closeTab(cls: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    const nextMap = { ...decompiledMap };
+    delete nextMap[cls];
+    setDecompiledMap(nextMap);
+    const remainingKeys = Object.keys(nextMap);
+    const nextActive = remainingKeys.length
+      ? activeClassName === cls
+        ? remainingKeys[remainingKeys.length - 1]
+        : activeClassName
+      : "";
+    setActiveClassName(nextActive);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(`apklens_decompiled_${analysis.id}`, JSON.stringify(nextMap));
+      sessionStorage.setItem(`apklens_active_class_${analysis.id}`, nextActive);
+    }
+  }
+
   function copyCode() {
-    if (!activeCode?.code) return;
-    navigator.clipboard.writeText(activeCode.code);
+    if (!activeClassName || !decompiledMap[activeClassName]) return;
+    navigator.clipboard.writeText(decompiledMap[activeClassName]);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -845,12 +986,14 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
         </div>
       )}
 
-      {/* Real-Time Animated Percentage Progress Bar Modal */}
+      {/* Enhanced Animated Radar Progress Bar Modal */}
       {progressState && (
         <div className="progress-modal-backdrop">
           <div className="progress-modal">
-            <div className="progress-modal-icon">
-              <Code2 size={26} />
+            <div className="progress-modal-radar">
+              <div className="radar-glow"></div>
+              <div className="radar-ring"></div>
+              <Code2 size={26} className="text-cyan" style={{ position: "relative", zIndex: 2 }} />
             </div>
             <h3>Decompiling Class</h3>
             <div className="progress-modal-target">{progressState.className}</div>
@@ -861,7 +1004,10 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
             </div>
 
             <div className="progress-info">
-              <span className="progress-stage">{progressState.stage}</span>
+              <span className="progress-stage">
+                <span className="status-dot" style={{ display: "inline-block", width: "6px", height: "6px", marginRight: "6px" }}></span>
+                {progressState.stage}
+              </span>
               <span className="progress-percent">{progressState.percent}%</span>
             </div>
           </div>
@@ -890,67 +1036,110 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
         ))}
       </div>
 
-      {/* Active Decompiled Source Code Display */}
-      {activeCode && (
+      {/* Active Decompiled Classes Tabs Bar & Code Viewer */}
+      {activeClassName && decompiledMap[activeClassName] && (
         <div
           style={{
-            background: "rgba(4, 7, 14, 0.9)",
+            background: "rgba(4, 7, 14, 0.95)",
             border: "1px solid rgba(56, 189, 248, 0.35)",
-            borderRadius: "14px",
-            padding: "18px",
+            borderRadius: "16px",
+            padding: "20px",
             marginBottom: "1.5rem",
-            boxShadow: "0 10px 30px rgba(0, 0, 0, 0.6)",
+            boxShadow: "0 14px 40px rgba(0, 0, 0, 0.7)",
           }}
         >
+          {/* Tabs Bar for Open Decompiled Classes */}
+          <div className="decompiled-tabs-bar">
+            {Object.keys(decompiledMap).map((cls) => {
+              const shortName = cls.split(".").pop() || cls;
+              const isActive = cls === activeClassName;
+              return (
+                <div
+                  key={cls}
+                  className={`decompiled-tab-btn ${isActive ? "active" : ""}`}
+                  onClick={() => {
+                    setActiveClassName(cls);
+                    sessionStorage.setItem(`apklens_active_class_${analysis.id}`, cls);
+                  }}
+                  title={cls}
+                >
+                  <Code2 size={13} className={isActive ? "text-cyan" : ""} />
+                  <span>{shortName}.java</span>
+                  <button
+                    className="decompiled-tab-close"
+                    onClick={(e) => closeTab(cls, e)}
+                    title="Close tab"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              marginBottom: "12px",
+              marginBottom: "14px",
+              paddingBottom: "10px",
+              borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
             }}
           >
-            <b
-              style={{
-                color: "var(--cyan)",
-                fontFamily: "var(--font-mono)",
-                fontSize: "13px",
-              }}
-            >
-              ☕ {activeCode.className}.java
-            </b>
+            <div>
+              <b
+                style={{
+                  color: "var(--cyan)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "13.5px",
+                }}
+              >
+                ☕ {activeClassName}.java
+              </b>
+              <span style={{ fontSize: "11.5px", color: "var(--text-faint)", marginLeft: "10px" }}>
+                Saved in local session
+              </span>
+            </div>
             <div style={{ display: "flex", gap: "8px" }}>
               <button
                 className="secondary"
                 onClick={copyCode}
-                style={{ padding: "5px 12px", fontSize: "0.8rem" }}
+                style={{ fontSize: "0.8rem", padding: "5px 12px" }}
               >
-                {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? "Copied" : "Copy"}
+                {copied ? <Check size={13} /> : <Copy size={13} />}
+                <span>{copied ? "Copied!" : "Copy Source"}</span>
               </button>
               <button
                 className="secondary"
-                onClick={() => setActiveCode(null)}
-                style={{ padding: "5px 10px" }}
+                onClick={() => {
+                  const blob = new Blob([decompiledMap[activeClassName]], { type: "text/plain" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `${activeClassName.split(".").pop() || "Class"}.java`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                style={{ fontSize: "0.8rem", padding: "5px 12px" }}
               >
-                <X size={13} />
+                <Download size={13} />
+                <span>Download .java</span>
               </button>
             </div>
           </div>
+
           <pre
+            className="code"
             style={{
-              maxHeight: "440px",
-              overflowY: "auto",
-              background: "#020408",
-              padding: "16px",
-              borderRadius: "10px",
-              fontSize: "0.85rem",
+              maxHeight: "560px",
+              margin: 0,
+              fontSize: "12.5px",
               lineHeight: 1.6,
-              color: "#e2e8f0",
-              fontFamily: "var(--font-mono)",
-              border: "1px solid var(--border-glass)",
+              background: "#03060d",
             }}
           >
-            <code>{activeCode.code}</code>
+            <code>{decompiledMap[activeClassName]}</code>
           </pre>
         </div>
       )}
@@ -988,7 +1177,7 @@ function CodeView({ analysis, apkFile }: { analysis: APKAnalysis; apkFile: File 
                   style={{ padding: "4px 10px", fontSize: "0.75rem", cursor: "pointer" }}
                   onClick={() => decompile(c.name, c.dex)}
                 >
-                  Decompile
+                  {decompiledMap[c.name] ? "View Code" : "Decompile"}
                 </button>
               </div>
             </div>

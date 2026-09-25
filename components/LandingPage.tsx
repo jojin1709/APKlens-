@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import {
   Shield, Lock, Zap, Code2, Cpu, FileText, CheckCircle2, ArrowRight,
   Upload, Layers, Eye, ShieldCheck, Check, Laptop, FileCode,
-  Download, ArrowUpRight
+  Download, ArrowUpRight, Linkedin, Github, Heart
 } from "lucide-react";
 
 interface LandingPageProps {
@@ -41,11 +41,11 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
         <div className="landing-nav-inner">
           <div className="brand" onClick={onLaunch} style={{ cursor: "pointer" }}>
             <div className="brandmark">
-              <Shield size={20} className="brandmark-icon" />
+              <img src="/icon.svg" alt="APKLens" style={{ width: "22px", height: "22px" }} />
             </div>
             <div>
               <div className="brand-title">
-                APKLens <span className="version-pill">v2.0</span>
+                APKLens
               </div>
               <span className="brand-sub">Android Security & Architecture Suite</span>
             </div>
@@ -56,6 +56,7 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
             <a href="#pipeline">Analysis Engine</a>
             <a href="#workflow">How It Works</a>
             <a href="#architecture">Privacy Architecture</a>
+            <a href="#developer">Developer</a>
           </div>
 
           <div className="landing-nav-actions">
@@ -162,6 +163,44 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
               <span className="metric-label">OASIS standard DevSecOps & PDF report export</span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Ecosystem & Security Standards Compatibility Banner */}
+      <section className="partner-strip">
+        <div className="partner-title">Aligned with Industry Mobile Security & DevSecOps Standards</div>
+        <div className="partner-logos">
+          <div className="partner-item">
+            <ShieldCheck size={18} className="partner-icon text-indigo" />
+            <span className="partner-name">OWASP MASVS</span>
+          </div>
+          <div className="partner-item">
+            <Code2 size={18} className="partner-icon text-cyan" />
+            <span className="partner-name">JADX Engine</span>
+          </div>
+          <div className="partner-item">
+            <FileCode size={18} className="partner-icon text-emerald" />
+            <span className="partner-name">OASIS SARIF 2.1</span>
+          </div>
+          <div className="partner-item">
+            <Cpu size={18} className="partner-icon text-purple" />
+            <span className="partner-name">AOSP Standards</span>
+          </div>
+          <div className="partner-item">
+            <Layers size={18} className="partner-icon text-blue" />
+            <span className="partner-name">AndroidX</span>
+          </div>
+          <div className="partner-item">
+            <CheckCircle2 size={18} className="partner-icon text-pink" />
+            <span className="partner-name">DefectDojo</span>
+          </div>
+          <div className="partner-item">
+            <Lock size={18} className="partner-icon text-amber" />
+            <span className="partner-name">SonarQube SAST</span>
+          </div>
+        </div>
+        <div className="partner-headline">
+          13 In-Browser Static Inspection Engines
         </div>
       </section>
 
@@ -471,6 +510,69 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
         </div>
       </section>
 
+      {/* Developer & Security Researcher Section */}
+      <section id="developer" className="section-container">
+        <div className="dev-card">
+          <div className="dev-glow"></div>
+          <div className="dev-inner">
+            <div className="dev-header">
+              <div className="dev-avatar-wrap">
+                <div className="dev-avatar">
+                  <Shield size={32} className="text-indigo" />
+                </div>
+                <div className="dev-status-badge">
+                  <span className="dot-green"></span> Security Researcher & Dev
+                </div>
+              </div>
+              <div className="dev-title-block">
+                <div className="section-tag">ARCHITECT & SECURITY RESEARCHER</div>
+                <h2 className="dev-name">Jojin John</h2>
+                <p className="dev-role">Software Engineer & Ethical Hacker / Security Researcher</p>
+              </div>
+            </div>
+
+            <p className="dev-description">
+              Creator and core developer of <b>APKLens</b>. Passionate about Android operating system internals,
+              Dalvik bytecode analysis, binary reverse engineering, and architecting privacy-first security tooling
+              that eliminates server-side data leakage.
+            </p>
+
+            <div className="dev-links-row">
+              <a
+                href="https://www.linkedin.com/in/jojin-john/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="dev-btn linkedin"
+              >
+                <Linkedin size={16} />
+                <span>Connect on LinkedIn</span>
+                <ArrowUpRight size={14} />
+              </a>
+              <a
+                href="https://github.com/jojin1709"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="dev-btn github"
+              >
+                <Github size={16} />
+                <span>GitHub @jojin1709</span>
+                <ArrowUpRight size={14} />
+              </a>
+              <a
+                href="https://github.com/sponsors/jojin1709"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="dev-btn sponsor"
+              >
+                <Heart size={16} />
+                <span>Sponsor on GitHub</span>
+                <ArrowUpRight size={14} />
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Call To Action Banner */}
       <section className="cta-banner">
         <div className="cta-inner">
@@ -492,12 +594,23 @@ export default function LandingPage({ onLaunch, onFileSelect }: LandingPageProps
       <footer className="landing-footer">
         <div className="footer-inner">
           <div className="footer-brand">
-            <Shield size={18} className="text-indigo" />
+            <img src="/icon.svg" alt="APKLens" style={{ width: "20px", height: "20px" }} />
             <b>APKLens</b>
             <span>• Next-Gen Android Security & Architecture Platform</span>
           </div>
+          <div className="footer-links-list">
+            <a href="https://www.linkedin.com/in/jojin-john/" target="_blank" rel="noopener noreferrer" className="footer-link">
+              <Linkedin size={14} /> LinkedIn
+            </a>
+            <a href="https://github.com/jojin1709" target="_blank" rel="noopener noreferrer" className="footer-link">
+              <Github size={14} /> GitHub
+            </a>
+            <a href="https://github.com/sponsors/jojin1709" target="_blank" rel="noopener noreferrer" className="footer-link sponsor-highlight">
+              <Heart size={14} /> Sponsor on GitHub
+            </a>
+          </div>
           <div className="footer-copy">
-            © 2026 JOJIN JOHN. All Rights Reserved. • <a href="https://github.com/sponsors/jojin1709" target="_blank" rel="noopener noreferrer" style={{ color: "#f472b6", textDecoration: "none", fontWeight: 600 }}>❤️ Sponsor on GitHub</a>
+            © 2026 JOJIN JOHN. All Rights Reserved.
           </div>
         </div>
       </footer>

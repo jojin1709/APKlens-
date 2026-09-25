@@ -17,7 +17,8 @@ X.509 certificate parsing, and automated vulnerability scanning with zero server
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-0D1117?style=flat-square&labelColor=0D1117&logo=typescript&logoColor=6366F1)](https://www.typescriptlang.org/)
 [![Stars](https://img.shields.io/github/stars/jojin1709/APKlens-?style=flat-square&labelColor=0D1117&color=6366F1)](https://github.com/jojin1709/APKlens-/stargazers)
 [![Forks](https://img.shields.io/github/forks/jojin1709/APKlens-?style=flat-square&labelColor=0D1117&color=6366F1)](https://github.com/jojin1709/APKlens-/network/members)
-[![Issues](https://img.shields.io/github/issues/jojin1709/APKlens-?style=flat-square&labelColor=0D1117&color=6366F1)](https://github.com/jojin1709/APKlens-/issues)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Jojin_John-0A66C2?style=flat-square&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/jojin-john/)
+[![Sponsor](https://img.shields.io/badge/Sponsor-❤️_GitHub-EA4AAA?style=flat-square&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/jojin1709)
 [![Last Commit](https://img.shields.io/github/last-commit/jojin1709/APKlens-?style=flat-square&labelColor=0D1117&color=6366F1)](https://github.com/jojin1709/APKlens-/commits/main)
 
 <br/>
@@ -190,8 +191,11 @@ Android 14/15 bytecode compatibility, OWASP MASTG vulnerability checks, JADX dec
 
 <br/>
 
-<a href="https://github.com/jojin1709/APKlens-/stargazers"><img src="https://img.shields.io/badge/⭐_Star-6366F1?style=for-the-badge&logo=github&logoColor=white" alt="Star on GitHub"></a>
+<a href="https://github.com/jojin1709/APKlens-/stargazers"><img src="https://img.shields.io/badge/⭐_Star-6366F1?style=for-the-badge&logo=github&logoColor=white" alt="Star on GitHub"></a>&nbsp;
+<a href="https://www.linkedin.com/in/jojin-john/"><img src="https://img.shields.io/badge/Connect_on_LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn"></a>
 
-**Developed by JOJIN JOHN**
+<br/><br/>
+
+**Developed by [JOJIN JOHN](https://www.linkedin.com/in/jojin-john/)** · [GitHub](https://github.com/jojin1709) · [LinkedIn](https://www.linkedin.com/in/jojin-john/) · [Sponsor](https://github.com/sponsors/jojin1709)
 
 </div>

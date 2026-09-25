@@ -17,6 +17,7 @@ export type APKAnalysis = {
   sha256: string;
   analyzedAt: string;
   packageName: string | null;
+  icon: string | null;
   versionName: string | null;
   versionCode: string | null;
   minSdk: string | null;

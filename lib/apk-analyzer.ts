@@ -76,10 +76,45 @@ function parseManifest(xml: string): DecodedManifest {
   };
 }
 
+async function extractAppIcon(zip: JSZip): Promise<string | null> {
+  const iconPatterns = [
+    /res\/mipmap-xxxhdpi[^\/]*\/.*(launcher|icon|app).*\.(png|webp)$/i,
+    /res\/mipmap-xxhdpi[^\/]*\/.*(launcher|icon|app).*\.(png|webp)$/i,
+    /res\/mipmap-xhdpi[^\/]*\/.*(launcher|icon|app).*\.(png|webp)$/i,
+    /res\/mipmap-hdpi[^\/]*\/.*(launcher|icon|app).*\.(png|webp)$/i,
+    /res\/drawable-xxxhdpi[^\/]*\/.*(launcher|icon|app).*\.(png|webp)$/i,
+    /res\/drawable-xxhdpi[^\/]*\/.*(launcher|icon|app).*\.(png|webp)$/i,
+    /res\/drawable-xhdpi[^\/]*\/.*(launcher|icon|app).*\.(png|webp)$/i,
+    /res\/mipmap[^\/]*\/.*(launcher|icon|app).*\.(png|webp)$/i,
+    /res\/drawable[^\/]*\/.*(launcher|icon|app).*\.(png|webp)$/i,
+    /.*(ic_launcher|app_icon|ic_app).*\.(png|webp)$/i,
+    /res\/.*icon.*\.(png|webp)$/i,
+  ];
+
+  const fileNames = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
+
+  for (const pattern of iconPatterns) {
+    const match = fileNames.find((name) => pattern.test(name));
+    if (match) {
+      try {
+        const file = zip.files[match];
+        const base64 = await file.async("base64");
+        const mime = match.toLowerCase().endsWith(".webp") ? "image/webp" : "image/png";
+        return `data:${mime};base64,${base64}`;
+      } catch (err) {
+        console.warn("Failed reading icon candidate:", match, err);
+      }
+    }
+  }
+
+  return null;
+}
+
 export async function analyzeAPK(file: File): Promise<APKAnalysis> {
   const buffer = await file.arrayBuffer();
   const hash = await sha256(buffer);
   const zip = await JSZip.loadAsync(buffer);
+  const icon = await extractAppIcon(zip);
 
   const files: APKFile[] = [];
   const resources: string[] = [];
@@ -279,6 +314,7 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
     sha256: hash,
     analyzedAt: new Date().toISOString(),
     packageName: manifest.packageName,
+    icon,
     versionName: manifest.versionName,
     versionCode: manifest.versionCode,
     minSdk: manifest.minSdk,
