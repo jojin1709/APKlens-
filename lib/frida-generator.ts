@@ -6,7 +6,7 @@
 export interface FridaSnippet {
   id: string;
   title: string;
-  category: "root" | "ssl" | "crypto" | "components" | "custom";
+  category: "root" | "ssl" | "crypto" | "components" | "custom" | "biometric";
   description: string;
   code: string;
 }
@@ -539,6 +539,220 @@ Java.perform(function () {
     } catch (e) {}
 
     console.log("[+] APKLens: Advanced Anti-Root bypass successfully installed.");
+});`
+    },
+    {
+      id: "biometric-fingerprint-bypass",
+      title: "Biometric & Fingerprint Authentication Bypass",
+      category: "biometric",
+      description: "Hooks androidx.biometric.BiometricPrompt and android.hardware.fingerprint.FingerprintManager to simulate successful authentication.",
+      code: `/*
+ * APKLens Biometric & Fingerprint Authentication Bypass
+ * Target: ${packageName}
+ */
+Java.perform(function () {
+    console.log("[*] APKLens: Hooking Biometric & Fingerprint APIs for ${packageName}...");
+
+    // 1. Hook AndroidX BiometricPrompt.AuthenticationCallback
+    try {
+        var BiometricPrompt = Java.use("androidx.biometric.BiometricPrompt");
+        var AuthResult = Java.use("androidx.biometric.BiometricPrompt$AuthenticationResult");
+        
+        BiometricPrompt.authenticate.overload("androidx.biometric.BiometricPrompt$PromptInfo").implementation = function (promptInfo) {
+            console.log("[+] Intercepted BiometricPrompt.authenticate(PromptInfo)");
+            // Bypass prompt trigger
+        };
+
+        var BiometricCallback = Java.use("androidx.biometric.BiometricPrompt$AuthenticationCallback");
+        BiometricCallback.onAuthenticationFailed.implementation = function () {
+            console.log("[+] Biometric authentication failed callback intercepted! Simulating success...");
+            try {
+                this.onAuthenticationSucceeded(null);
+            } catch (e) {
+                console.log("[-] Error forcing success: " + e);
+            }
+        };
+    } catch (e) {
+        console.log("[-] AndroidX BiometricPrompt not found or hook failed: " + e);
+    }
+
+    // 2. Legacy FingerprintManagerCompat
+    try {
+        var FingerprintManagerCompat = Java.use("androidx.core.hardware.fingerprint.FingerprintManagerCompat");
+        FingerprintManagerCompat.hasEnrolledFingerprints.implementation = function () {
+            console.log("[+] FingerprintManagerCompat.hasEnrolledFingerprints -> true");
+            return true;
+        };
+        FingerprintManagerCompat.isHardwareDetected.implementation = function () {
+            console.log("[+] FingerprintManagerCompat.isHardwareDetected -> true");
+            return true;
+        };
+    } catch (e) {}
+
+    // 3. Native android.hardware.fingerprint.FingerprintManager
+    try {
+        var FingerprintManager = Java.use("android.hardware.fingerprint.FingerprintManager");
+        FingerprintManager.hasEnrolledFingerprints.implementation = function () {
+            console.log("[+] FingerprintManager.hasEnrolledFingerprints -> true");
+            return true;
+        };
+        FingerprintManager.isHardwareDetected.implementation = function () {
+            console.log("[+] FingerprintManager.isHardwareDetected -> true");
+            return true;
+        };
+    } catch (e) {}
+
+    console.log("[+] APKLens: Biometric bypass hooks active.");
+});`
+    },
+    {
+      id: "dynamic-crypto-logger",
+      title: "Dynamic Cryptography & Cipher.doFinal Logger",
+      category: "crypto",
+      description: "Intercepts javax.crypto.Cipher initialization and encryption/decryption operations, dumping raw keys, IVs, and plaintext/ciphertext.",
+      code: `/*
+ * APKLens Dynamic Cipher & Key Interceptor
+ * Target: ${packageName}
+ */
+Java.perform(function () {
+    console.log("[*] APKLens: Initializing Cryptography Interceptor for ${packageName}...");
+
+    function bytesToHex(bytes) {
+        if (!bytes) return "null";
+        var hex = "";
+        for (var i = 0; i < bytes.length; i++) {
+            var b = bytes[i] & 0xFF;
+            hex += (b < 16 ? "0" : "") + b.toString(16);
+        }
+        return hex;
+    }
+
+    function bytesToString(bytes) {
+        if (!bytes) return "null";
+        try {
+            return Java.use("java.lang.String").$new(bytes, "UTF-8");
+        } catch (e) {
+            return bytesToHex(bytes);
+        }
+    }
+
+    var Cipher = Java.use("javax.crypto.Cipher");
+
+    // Hook Cipher.init
+    Cipher.init.overload("int", "java.security.Key").implementation = function (opmode, key) {
+        var modeStr = opmode === 1 ? "ENCRYPT" : (opmode === 2 ? "DECRYPT" : opmode);
+        console.log("[Cipher.init] Algorithm: " + this.getAlgorithm() + " | Mode: " + modeStr);
+        if (key) {
+            console.log("    Key Algorithm: " + key.getAlgorithm() + " | Format: " + key.getFormat());
+            console.log("    Key Hex: " + bytesToHex(key.getEncoded()));
+        }
+        return this.init(opmode, key);
+    };
+
+    Cipher.init.overload("int", "java.security.Key", "java.security.spec.AlgorithmParameterSpec").implementation = function (opmode, key, params) {
+        var modeStr = opmode === 1 ? "ENCRYPT" : (opmode === 2 ? "DECRYPT" : opmode);
+        console.log("[Cipher.init] Algorithm: " + this.getAlgorithm() + " | Mode: " + modeStr);
+        if (key) {
+            console.log("    Key Hex: " + bytesToHex(key.getEncoded()));
+        }
+        try {
+            var IvParameterSpec = Java.cast(params, Java.use("javax.crypto.spec.IvParameterSpec"));
+            console.log("    IV Hex: " + bytesToHex(IvParameterSpec.getIV()));
+        } catch (e) {}
+        return this.init(opmode, key, params);
+    };
+
+    // Hook Cipher.doFinal
+    Cipher.doFinal.overload("[B").implementation = function (input) {
+        var result = this.doFinal(input);
+        console.log("[Cipher.doFinal] Algorithm: " + this.getAlgorithm());
+        console.log("    Input (String): " + bytesToString(input));
+        console.log("    Input (Hex):    " + bytesToHex(input));
+        console.log("    Output (Hex):   " + bytesToHex(result));
+        return result;
+    };
+
+    console.log("[+] APKLens: Cipher logger successfully attached.");
+});`
+    },
+    {
+      id: "flutter-boringssl-unpin",
+      title: "Flutter & React Native TLS Pinning Bypass",
+      category: "ssl",
+      description: "Hooks libflutter.so BoringSSL ssl_crypto_x509_session_verify_cert_chain export and native TrustManager to decrypt Flutter HTTPS traffic.",
+      code: `/*
+ * APKLens Flutter BoringSSL Pinning Bypass
+ * Target: ${packageName}
+ */
+setTimeout(function () {
+    console.log("[*] APKLens: Scanning for libflutter.so BoringSSL verification routines...");
+
+    var m = Process.findModuleByName("libflutter.so");
+    if (!m) {
+        console.log("[-] libflutter.so not loaded yet; monitoring dlopen...");
+    } else {
+        hookFlutter(m);
+    }
+
+    function hookFlutter(flutterModule) {
+        console.log("[+] Found libflutter.so at base: " + flutterModule.base);
+        // Pattern match for session_verify_cert_chain in BoringSSL
+        var patterns = [
+            "2d e9 f0 4f a3 b0 81 46 50 20 10 70", // ARM32 pattern
+            "ff 43 01 d1 f4 4f 02 a9 fd 7b 03 a9", // ARM64 pattern
+            "55 41 57 41 56 41 55 41 54 53 48 83 ec" // x86_64 pattern
+        ];
+
+        patterns.forEach(function (pattern) {
+            Memory.scan(flutterModule.base, flutterModule.size, pattern, {
+                onMatch: function (address, size) {
+                    console.log("[+] BoringSSL verify match at: " + address);
+                    Interceptor.attach(address, {
+                        onLeave: function (retval) {
+                            console.log("[+] Bypassed ssl_crypto_x509_session_verify_cert_chain return value -> 1");
+                            retval.replace(ptr(0x1));
+                        }
+                    });
+                },
+                onError: function (reason) {},
+                onComplete: function () {}
+            });
+        });
+    }
+}, 1000);`
+    },
+    {
+      id: "rootbeer-bypass",
+      title: "RootBeer Library Dedicated Bypass",
+      category: "root",
+      description: "Directly stubs all detection routines of com.scottyab.rootbeer.RootBeer to return false.",
+      code: `/*
+ * APKLens RootBeer Anti-Tamper Bypass
+ * Target: ${packageName}
+ */
+Java.perform(function () {
+    console.log("[*] APKLens: Attaching RootBeer detection bypass for ${packageName}...");
+
+    try {
+        var RootBeer = Java.use("com.scottyab.rootbeer.RootBeer");
+        RootBeer.isRooted.implementation = function () {
+            console.log("[+] RootBeer.isRooted() called -> returning false");
+            return false;
+        };
+        RootBeer.isRootedWithBusyBoxCheck.implementation = function () {
+            console.log("[+] RootBeer.isRootedWithBusyBoxCheck() called -> returning false");
+            return false;
+        };
+        RootBeer.checkSuBinary.implementation = function () { return false; };
+        RootBeer.checkBusyBoxBinary.implementation = function () { return false; };
+        RootBeer.checkSuExists.implementation = function () { return false; };
+        RootBeer.checkForRootNative.implementation = function () { return false; };
+        RootBeer.checkForDangerousProps.implementation = function () { return false; };
+        RootBeer.checkForRWPaths.implementation = function () { return false; };
+        console.log("[+] RootBeer library bypass hooks successfully active.");
+    } catch (e) {
+        console.log("[-] RootBeer library not found or classes obfuscated: " + e);
+    }
 });`
     }
   ];

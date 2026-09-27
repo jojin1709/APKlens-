@@ -18,6 +18,8 @@ export interface ElfHardeningInfo {
   hasFortify: boolean;
   hasRpath: boolean;
   rpathEntries: string[];
+  is16KbAligned: boolean;
+  maxLoadAlignment: number;
 }
 
 export interface NativeLibraryInfo {
@@ -40,6 +42,7 @@ const MACHINE_MAP: Record<number, string> = {
   0xf3: "RISC-V",
 };
 
+const PT_LOAD = 0x00000001;
 const PT_GNU_STACK = 0x6474e551;
 const PT_GNU_RELRO = 0x6474e552;
 
@@ -52,6 +55,8 @@ export function parseElf(bytes: Uint8Array, path: string): NativeLibraryInfo {
     hasFortify: false,
     hasRpath: false,
     rpathEntries: [],
+    is16KbAligned: true,
+    maxLoadAlignment: 0,
   };
 
   const defaultInfo: NativeLibraryInfo = {
@@ -84,9 +89,10 @@ export function parseElf(bytes: Uint8Array, path: string): NativeLibraryInfo {
   const e_machine = view.getUint16(18, isLittleEndian);
   const architecture = MACHINE_MAP[e_machine] || `Machine 0x${e_machine.toString(16)}`;
 
-  // Program header parsing for NX Stack and RELRO
+  // Program header parsing for NX Stack, RELRO, and 16KB Page Alignment (Android 15+)
   let hasNxStack = false;
   let hasRelro = false;
+  const loadAlignments: number[] = [];
 
   try {
     let phOff = 0;
@@ -110,7 +116,17 @@ export function parseElf(bytes: Uint8Array, path: string): NativeLibraryInfo {
         const entryOff = phOff + i * phEntSize;
         const p_type = view.getUint32(entryOff, isLittleEndian);
 
-        if (p_type === PT_GNU_STACK) {
+        if (p_type === PT_LOAD) {
+          // p_align offset: 48 in 64-bit Elf64_Phdr, 28 in 32-bit Elf32_Phdr
+          const alignOff = is64Bit ? entryOff + 48 : entryOff + 28;
+          let align = 0;
+          if (is64Bit && alignOff + 8 <= bytes.byteLength) {
+            align = Number(view.getBigUint64(alignOff, isLittleEndian));
+          } else if (!is64Bit && alignOff + 4 <= bytes.byteLength) {
+            align = view.getUint32(alignOff, isLittleEndian);
+          }
+          if (align > 0) loadAlignments.push(align);
+        } else if (p_type === PT_GNU_STACK) {
           // p_flags is at offset 4 in 64-bit or offset 24 in 32-bit
           const flagsOff = is64Bit ? entryOff + 4 : entryOff + 24;
           const p_flags = view.getUint32(flagsOff, isLittleEndian);
@@ -124,6 +140,10 @@ export function parseElf(bytes: Uint8Array, path: string): NativeLibraryInfo {
   } catch (err) {
     console.warn("Error reading ELF program headers:", err);
   }
+
+  const maxLoadAlignment = loadAlignments.length > 0 ? Math.max(...loadAlignments) : (is64Bit ? 4096 : 4096);
+  // Android 15 mandates 16KB (0x4000 = 16384 bytes) page alignment for 64-bit binaries
+  const is16KbAligned = is64Bit ? (maxLoadAlignment >= 16384) : true;
 
   // Extract binary strings to find JNI functions, linked libraries, and symbol hardening
   const text = new TextDecoder("latin1").decode(bytes);
@@ -177,6 +197,8 @@ export function parseElf(bytes: Uint8Array, path: string): NativeLibraryInfo {
       hasFortify,
       hasRpath,
       rpathEntries: uniqueRpaths,
+      is16KbAligned,
+      maxLoadAlignment,
     },
   };
 }

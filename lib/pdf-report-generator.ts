@@ -5,11 +5,12 @@ import type { APKAnalysis } from "@/types/apk";
  */
 export function openPrintableReport(analysis: APKAnalysis) {
   const counts = {
+    critical: analysis.findings.filter(x => x.severity === "critical").length,
     high: analysis.findings.filter(x => x.severity === "high").length,
     medium: analysis.findings.filter(x => x.severity === "medium").length,
     low: analysis.findings.filter(x => x.severity === "low").length,
   };
-  const score = Math.max(0, 100 - counts.high * 20 - counts.medium * 10 - counts.low * 3);
+  const score = Math.max(0, 100 - counts.critical * 25 - counts.high * 15 - counts.medium * 8 - counts.low * 2);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -33,6 +34,7 @@ export function openPrintableReport(analysis: APKAnalysis) {
     th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
     th { background: #f1f5f9; font-weight: 600; }
     .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .critical { background: #fee2e2; color: #991b1b; border: 1px solid #ef4444; }
     .high { background: #fee2e2; color: #991b1b; }
     .medium { background: #fef3c7; color: #92400e; }
     .low { background: #e0f2fe; color: #075985; }

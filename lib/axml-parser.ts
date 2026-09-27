@@ -15,7 +15,7 @@ export interface DecodedManifest {
   activities: { name: string; exported: string | null }[];
   services: { name: string; exported: string | null }[];
   receivers: { name: string; exported: string | null }[];
-  providers: { name: string; exported: string | null }[];
+  providers: { name: string; exported: string | null; authorities?: string | null }[];
   debuggable: string | null;
   allowBackup: string | null;
   usesCleartextTraffic: string | null;
@@ -171,7 +171,7 @@ export function decodeAxml(bytes: Uint8Array): DecodedManifest {
   const activities: { name: string; exported: string | null }[] = [];
   const services: { name: string; exported: string | null }[] = [];
   const receivers: { name: string; exported: string | null }[] = [];
-  const providers: { name: string; exported: string | null }[] = [];
+  const providers: { name: string; exported: string | null; authorities?: string | null }[] = [];
   let debuggable: string | null = null;
   let allowBackup: string | null = null;
   let usesCleartextTraffic: string | null = null;
@@ -276,7 +276,8 @@ export function decodeAxml(bytes: Uint8Array): DecodedManifest {
           if (name) receivers.push({ name: normalizeCompName(name, packageName), exported: getAttr("exported") ?? null });
         } else if (tagName === "provider") {
           const name = getAttr("name");
-          if (name) providers.push({ name: normalizeCompName(name, packageName), exported: getAttr("exported") ?? null });
+          const authorities = getAttr("authorities");
+          if (name) providers.push({ name: normalizeCompName(name, packageName), exported: getAttr("exported") ?? null, authorities: authorities ?? null });
         }
 
         break;

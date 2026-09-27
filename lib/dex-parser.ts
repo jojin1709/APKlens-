@@ -66,9 +66,9 @@ export function parseDex(bytes: Uint8Array, path: string): DexInfo {
     return readString(strIdx);
   };
 
-  // Read class definitions
+  // Read class definitions (up to 50,000 classes per DEX file)
   const classes: string[] = [];
-  const limit = Math.min(classDefsSize, 1000); // Read up to 1000 classes for snappy UI performance
+  const limit = Math.min(classDefsSize, 50000);
   for (let i = 0; i < limit; i++) {
     const classDefOffset = classDefsOff + i * 32;
     if (classDefOffset + 32 > bytes.length) break;

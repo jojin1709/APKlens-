@@ -629,6 +629,57 @@ function Overview({ analysis }: { analysis: APKAnalysis }) {
         <ListCard title="Identified Frameworks" items={analysis.technologies} />
         <ListCard title="Contacted Network Domains" items={analysis.domains.slice(0, 8)} />
       </div>
+
+      {/* Threat Intelligence & Malware Multi-Scanner Verification */}
+      <div className="panel full" style={{ marginTop: "1rem" }}>
+        <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+          <span>Threat Intelligence & Multi-Scanner Verification</span>
+          <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
+            SHA-256: {analysis.sha256.slice(0, 16)}...
+          </span>
+        </div>
+        <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "12px" }}>
+          Verify the cryptographic fingerprint against global threat intelligence databases and malware repositories without uploading proprietary APK code:
+        </p>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <a
+            href={`https://www.virustotal.com/gui/file/${analysis.sha256}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="secondary"
+            style={{ textDecoration: "none", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px" }}
+          >
+            <Shield size={14} style={{ color: "#38bdf8" }} /> Check on VirusTotal <ArrowUpRight size={12} />
+          </a>
+          <a
+            href={`https://koodous.com/apks?search=${analysis.sha256}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="secondary"
+            style={{ textDecoration: "none", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px" }}
+          >
+            <Radar size={14} style={{ color: "#34d399" }} /> Koodous Android Intel <ArrowUpRight size={12} />
+          </a>
+          <a
+            href={`https://www.hybrid-analysis.com/search?query=${analysis.sha256}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="secondary"
+            style={{ textDecoration: "none", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px" }}
+          >
+            <Zap size={14} style={{ color: "#fbbf24" }} /> Hybrid Analysis Sandbox <ArrowUpRight size={12} />
+          </a>
+          <a
+            href={`https://bazaar.abuse.ch/browse.php?search=hash%3A${analysis.sha256}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="secondary"
+            style={{ textDecoration: "none", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px" }}
+          >
+            <Database size={14} style={{ color: "#f87171" }} /> MalwareBazaar Database <ArrowUpRight size={12} />
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1562,6 +1613,9 @@ function NativeView({ analysis }: { analysis: APKAnalysis }) {
                   <span style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "6px", fontWeight: 600, background: !lib.hardening.hasRpath ? "rgba(52, 211, 153, 0.15)" : "rgba(239, 68, 68, 0.15)", color: !lib.hardening.hasRpath ? "#34d399" : "#f87171", border: `1px solid ${!lib.hardening.hasRpath ? "rgba(52, 211, 153, 0.3)" : "rgba(239, 68, 68, 0.3)"}` }}>
                     RPATH: {!lib.hardening.hasRpath ? "CLEAN" : `INSECURE`}
                   </span>
+                  <span style={{ fontSize: "11px", padding: "3px 8px", borderRadius: "6px", fontWeight: 600, background: lib.hardening.is16KbAligned ? "rgba(52, 211, 153, 0.15)" : "rgba(239, 68, 68, 0.15)", color: lib.hardening.is16KbAligned ? "#34d399" : "#f87171", border: `1px solid ${lib.hardening.is16KbAligned ? "rgba(52, 211, 153, 0.3)" : "rgba(239, 68, 68, 0.3)"}` }}>
+                    16KB PAGE: {lib.hardening.is16KbAligned ? "ALIGNED (ANDROID 15+)" : "UNALIGNED (CRASH RISK)"}
+                  </span>
                 </div>
               </div>
             )}
@@ -1640,10 +1694,142 @@ function NativeView({ analysis }: { analysis: APKAnalysis }) {
 }
 
 function ResourceView({ analysis }: { analysis: APKAnalysis }) {
+  const [filter, setFilter] = useState("");
+  const [category, setCategory] = useState<"all" | "drawables" | "layouts" | "xml" | "values" | "assets">("all");
+  const [copiedPath, setCopiedPath] = useState<string | null>(null);
+
+  const drawables = useMemo(() => analysis.resources.filter((r) => r.includes("res/drawable") || r.includes("res/mipmap")), [analysis.resources]);
+  const layouts = useMemo(() => analysis.resources.filter((r) => r.includes("res/layout")), [analysis.resources]);
+  const xmlConfigs = useMemo(() => analysis.resources.filter((r) => r.includes("res/xml")), [analysis.resources]);
+  const values = useMemo(() => analysis.resources.filter((r) => r.includes("res/values")), [analysis.resources]);
+  const assets = analysis.assets || [];
+
+  const displayedItems = useMemo(() => {
+    let base = analysis.resources;
+    if (category === "drawables") base = drawables;
+    else if (category === "layouts") base = layouts;
+    else if (category === "xml") base = xmlConfigs;
+    else if (category === "values") base = values;
+    else if (category === "assets") base = assets;
+
+    if (!filter.trim()) return base;
+    const q = filter.toLowerCase();
+    return base.filter((item) => item.toLowerCase().includes(q));
+  }, [analysis.resources, drawables, layouts, xmlConfigs, values, assets, category, filter]);
+
+  function copy(path: string) {
+    navigator.clipboard.writeText(path);
+    setCopiedPath(path);
+    setTimeout(() => setCopiedPath(null), 2000);
+  }
+
+  const categoryPills = [
+    { id: "all", label: "All Resources", count: analysis.resources.length },
+    { id: "drawables", label: "Drawables & Icons", count: drawables.length },
+    { id: "layouts", label: "Layouts (XML)", count: layouts.length },
+    { id: "xml", label: "XML Configs", count: xmlConfigs.length },
+    { id: "values", label: "Values", count: values.length },
+    { id: "assets", label: "Packaged Assets", count: assets.length },
+  ] as const;
+
   return (
-    <div className="two">
-      <ListView title="Application Resources" items={analysis.resources} empty="No res/ files found." />
-      <ListView title="Packaged Assets" items={analysis.assets} empty="No assets/ files found." />
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div className="panel full">
+        <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+          <span>Application Resources & Packaged Assets</span>
+          <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+            {analysis.resources.length} res/ files · {analysis.assets.length} assets/ files
+          </span>
+        </div>
+
+        {/* Category Filter Pills */}
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px", marginTop: "10px" }}>
+          {categoryPills.map((pill) => (
+            <button
+              key={pill.id}
+              className="secondary"
+              style={{
+                fontSize: "12px",
+                padding: "6px 12px",
+                background: category === pill.id ? "rgba(61, 220, 132, 0.15)" : undefined,
+                borderColor: category === pill.id ? "rgba(61, 220, 132, 0.4)" : undefined,
+                color: category === pill.id ? "#3DDC84" : undefined,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+              onClick={() => setCategory(pill.id)}
+            >
+              <span>{pill.label}</span>
+              <span style={{ fontSize: "10px", opacity: 0.7, padding: "1px 5px", background: "rgba(255, 255, 255, 0.08)", borderRadius: "4px" }}>
+                {pill.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="search" style={{ marginBottom: "16px" }}>
+          <Search size={15} />
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter resources (e.g. ic_launcher, network_security, activity_main, strings)..."
+          />
+        </div>
+
+        {/* List of resources */}
+        <div style={{ maxHeight: "550px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "4px" }}>
+          {displayedItems.length > 0 ? (
+            displayedItems.slice(0, 500).map((path, idx) => {
+              const isImage = /\.(png|webp|jpg|jpeg|svg)$/i.test(path);
+              const isXml = /\.xml$/i.test(path);
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "7px 12px",
+                    borderRadius: "6px",
+                    background: idx % 2 === 0 ? "rgba(255, 255, 255, 0.015)" : "transparent",
+                    borderBottom: "1px solid rgba(255, 255, 255, 0.03)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "12px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden" }}>
+                    {isImage ? (
+                      <Eye size={13} style={{ color: "#38bdf8", flexShrink: 0 }} />
+                    ) : isXml ? (
+                      <FileCode size={13} style={{ color: "#3DDC84", flexShrink: 0 }} />
+                    ) : (
+                      <Archive size={13} style={{ color: "#94a3b8", flexShrink: 0 }} />
+                    )}
+                    <span style={{ wordBreak: "break-all", color: "#e2e8f0" }}>{path}</span>
+                  </div>
+                  <button
+                    className="secondary"
+                    onClick={() => copy(path)}
+                    style={{ padding: "3px 8px", fontSize: "11px", flexShrink: 0, marginLeft: "12px" }}
+                    title="Copy path"
+                  >
+                    {copiedPath === path ? <Check size={11} /> : <Copy size={11} />}
+                  </button>
+                </div>
+              );
+            })
+          ) : (
+            <div className="empty">No matching resources found.</div>
+          )}
+          {displayedItems.length > 500 && (
+            <div style={{ padding: "8px", textAlign: "center", fontSize: "12px", color: "var(--text-muted)" }}>
+              Showing first 500 of {displayedItems.length} resources. Use search to narrow down results.
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -2374,21 +2560,59 @@ function SigningView({ analysis }: { analysis: APKAnalysis }) {
     );
   }
 
+  const isDebug = /Android Debug/i.test(cert.subject) || /Android Debug/i.test(cert.issuer);
+  const isJanusRisk = cert.scheme.includes("v1") && !cert.scheme.includes("v2") && !cert.scheme.includes("v3");
+  const isWeakAlg = /MD5|SHA-?1/i.test(cert.sigAlg);
+  const isExpired = new Date(cert.validTo).getTime() < Date.now();
+
   return (
-    <div className="panel full">
-      <div className="panel-title">
-        X.509 Signing Certificate <span>Scheme: {cert.scheme}</span>
-      </div>
-      <div className="meta-grid" style={{ marginTop: "1rem" }}>
-        <Meta label="Signing Scheme" value={cert.scheme} />
-        <Meta label="Signature Algorithm" value={cert.sigAlg} />
-        <Meta label="Valid From" value={cert.validFrom} />
-        <Meta label="Valid To" value={cert.validTo} />
-        <Meta label="Subject" value={cert.subject} />
-        <Meta label="Issuer" value={cert.issuer} />
-        <Meta label="Serial Number" value={cert.serialNumber} mono />
-        <Meta label="SHA-256 Fingerprint" value={cert.sha256Fingerprint} mono />
-        <Meta label="SHA-1 Fingerprint" value={cert.sha1Fingerprint} mono />
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* Security Alerts */}
+      {(isDebug || isJanusRisk || isWeakAlg || isExpired) && (
+        <div className="panel full" style={{ borderColor: isDebug ? "var(--rose)" : "var(--amber)" }}>
+          <div className="panel-title" style={{ color: isDebug ? "var(--rose)" : "var(--amber)" }}>
+            <AlertCircle size={16} /> Certificate Security Warnings
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "10px" }}>
+            {isDebug && (
+              <div style={{ padding: "8px 12px", borderRadius: "6px", background: "rgba(244, 63, 94, 0.15)", border: "1px solid rgba(244, 63, 94, 0.3)", fontSize: "12px", color: "var(--rose)" }}>
+                🚨 <b>Debug Keystore Detected:</b> This APK was signed with the default Android debug certificate (CN=Android Debug). Production applications must never be published with debug certificates.
+              </div>
+            )}
+            {isJanusRisk && (
+              <div style={{ padding: "8px 12px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", fontSize: "12px", color: "var(--amber)" }}>
+                ⚠️ <b>Janus Vulnerability Risk (CVE-2017-13156):</b> This APK relies solely on JAR Signature Scheme v1 and lacks v2/v3 signing blocks.
+              </div>
+            )}
+            {isWeakAlg && (
+              <div style={{ padding: "8px 12px", borderRadius: "6px", background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", fontSize: "12px", color: "var(--amber)" }}>
+                ⚠️ <b>Legacy Signature Algorithm:</b> The certificate uses {cert.sigAlg}, which is cryptographically deprecated.
+              </div>
+            )}
+            {isExpired && (
+              <div style={{ padding: "8px 12px", borderRadius: "6px", background: "rgba(244, 63, 94, 0.15)", border: "1px solid rgba(244, 63, 94, 0.3)", fontSize: "12px", color: "var(--rose)" }}>
+                🚨 <b>Certificate Expired:</b> This signing certificate expired on {cert.validTo}.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="panel full">
+        <div className="panel-title">
+          X.509 Signing Certificate <span>Scheme: {cert.scheme}</span>
+        </div>
+        <div className="meta-grid" style={{ marginTop: "1rem" }}>
+          <Meta label="Signing Scheme" value={cert.scheme} />
+          <Meta label="Signature Algorithm" value={cert.sigAlg} />
+          <Meta label="Valid From" value={cert.validFrom} />
+          <Meta label="Valid To" value={cert.validTo} />
+          <Meta label="Subject" value={cert.subject} />
+          <Meta label="Issuer" value={cert.issuer} />
+          <Meta label="Serial Number" value={cert.serialNumber} mono />
+          <Meta label="SHA-256 Fingerprint" value={cert.sha256Fingerprint} mono />
+          <Meta label="SHA-1 Fingerprint" value={cert.sha1Fingerprint} mono />
+        </div>
       </div>
     </div>
   );
@@ -3057,7 +3281,7 @@ interface ExtraParam {
 
 function IntentPlaygroundView({ analysis }: { analysis: APKAnalysis }) {
   const pkg = analysis.packageName || "com.example.app";
-  const [componentType, setComponentType] = useState<"activity" | "receiver" | "service">("activity");
+  const [componentType, setComponentType] = useState<"activity" | "receiver" | "service" | "provider">("activity");
   const [selectedComp, setSelectedComp] = useState<string>("");
   const [customComp, setCustomComp] = useState<string>("");
   const [action, setAction] = useState<string>("android.intent.action.VIEW");
@@ -3083,6 +3307,7 @@ function IntentPlaygroundView({ analysis }: { analysis: APKAnalysis }) {
   const compList = useMemo(() => {
     if (componentType === "activity") return analysis.activities;
     if (componentType === "receiver") return analysis.receivers;
+    if (componentType === "provider") return analysis.providers;
     return analysis.services;
   }, [componentType, analysis]);
 
@@ -3111,6 +3336,13 @@ function IntentPlaygroundView({ analysis }: { analysis: APKAnalysis }) {
   const adbCommand = useMemo(() => {
     const parts: string[] = ["adb shell"];
 
+    if (componentType === "provider") {
+      const providerAuth = (currentCompObj as any)?.authorities || pkg;
+      const targetUri = dataUri.trim() || `content://${providerAuth}/`;
+      parts.push(`content query --uri "${targetUri}"`);
+      return parts.join(" ");
+    }
+
     if (componentType === "activity") parts.push("am start");
     else if (componentType === "receiver") parts.push("am broadcast");
     else parts.push("am startservice");
@@ -3137,7 +3369,7 @@ function IntentPlaygroundView({ analysis }: { analysis: APKAnalysis }) {
     });
 
     return parts.join(" ");
-  }, [componentType, formattedComponent, action, dataUri, mimeType, selectedCategories, customCategory, flags, customFlagHex, extras]);
+  }, [componentType, formattedComponent, action, dataUri, mimeType, selectedCategories, customCategory, flags, customFlagHex, extras, currentCompObj, pkg]);
 
   // Build Python Subprocess PoC
   const pythonPoc = useMemo(() => {
@@ -3169,6 +3401,44 @@ if __name__ == "__main__":
 
   // Build Frida Intent Script
   const fridaPoc = useMemo(() => {
+    if (componentType === "provider") {
+      const providerAuth = (currentCompObj as any)?.authorities || pkg;
+      const targetUri = dataUri.trim() || `content://${providerAuth}/`;
+      return `/*
+ * APKLens Frida Content Provider Query
+ * Target: ${targetUri}
+ */
+Java.perform(function() {
+    var Uri = Java.use("android.net.Uri");
+    var ActivityThread = Java.use("android.app.ActivityThread");
+    var context = ActivityThread.currentApplication().getApplicationContext();
+    var resolver = context.getContentResolver();
+
+    var targetUri = Uri.parse("${targetUri}");
+    console.log("[*] Querying Content Provider at: " + targetUri.toString());
+    try {
+        var cursor = resolver.query(targetUri, null, null, null, null);
+        if (cursor) {
+            var colCount = cursor.getColumnCount();
+            console.log("[+] Cursor returned " + cursor.getCount() + " rows:");
+            while (cursor.moveToNext()) {
+                var row = [];
+                for (var i = 0; i < colCount; i++) {
+                    row.push(cursor.getColumnName(i) + "=" + cursor.getString(i));
+                }
+                console.log("    " + row.join(", "));
+            }
+            cursor.close();
+        } else {
+            console.log("[-] Provider returned null cursor.");
+        }
+    } catch (e) {
+        console.log("[-] Query exception: " + e);
+    }
+});
+`;
+    }
+
     return `/*
  * APKLens Frida Dynamic Intent Spoofer
  * Fires crafted intent directly inside the application's process context.
@@ -3334,7 +3604,7 @@ echo "[+] Execution complete."
               IPC Component Type
             </label>
             <div style={{ display: "flex", gap: "8px" }}>
-              {(["activity", "receiver", "service"] as const).map((t) => (
+              {(["activity", "receiver", "service", "provider"] as const).map((t) => (
                 <button
                   key={t}
                   className="secondary"

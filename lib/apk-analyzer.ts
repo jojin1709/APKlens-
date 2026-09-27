@@ -58,7 +58,8 @@ function parseManifest(xml: string): DecodedManifest {
   const readComponents = (selector: string) =>
     [...doc.querySelectorAll(selector)].map((x) => ({
       name: normalizeComponentName(attr(x, "name"), pkg),
-      exported: attr(x, "exported")
+      exported: attr(x, "exported"),
+      authorities: attr(x, "authorities") ?? undefined,
     })).filter(x => x.name);
 
   return {
@@ -317,6 +318,22 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
       title: `APK is signed (${certificate.scheme})`,
       evidence: `Subject: ${certificate.subject} · Algorithm: ${certificate.sigAlg}`
     });
+    // Check for debug keystore
+    if (/Android Debug/i.test(certificate.subject) || /Android Debug/i.test(certificate.issuer)) {
+      findings.push({
+        severity: "critical",
+        title: "Application Signed with Android Debug Keystore",
+        evidence: `Certificate Subject is "${certificate.subject}". The APK is signed with a publicly known default debug key. Production applications must NEVER use debug certificates.`
+      });
+    }
+    // Check for Janus Vulnerability (v1 only without v2/v3 signing block)
+    if (certificate.scheme.includes("v1") && !certificate.scheme.includes("v2") && !certificate.scheme.includes("v3")) {
+      findings.push({
+        severity: "high",
+        title: "Vulnerable to Janus Vulnerability (CVE-2017-13156)",
+        evidence: "APK is signed solely with APK Signature Scheme v1 (JAR signing) without v2 or v3 signing blocks. Allows attackers to prepend malicious DEX bytecode to the APK without invalidating the cryptographic signature."
+      });
+    }
     try {
       const expiry = new Date(certificate.validTo);
       if (!isNaN(expiry.getTime()) && expiry < new Date()) {
@@ -358,6 +375,30 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
       title: "Sensitive permissions requested",
       evidence: manifest.permissions.filter(p => /READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|CAMERA|RECORD_AUDIO|ACCESS_FINE_LOCATION/i.test(p)).join(", ")
     });
+  }
+
+  // Android 14+ Foreground Service type audit
+  if (manifest.permissions.some(p => p.includes("FOREGROUND_SERVICE"))) {
+    const targetSdkNum = manifest.targetSdk ? parseInt(manifest.targetSdk, 10) : 0;
+    if (targetSdkNum >= 34 && manifestXml && !manifestXml.includes("foregroundServiceType")) {
+      findings.push({
+        severity: "medium",
+        title: "Missing foregroundServiceType on Services (Android 14+ Requirement)",
+        evidence: "App requests FOREGROUND_SERVICE permission and targets Android 14 (API 34+), but does not declare android:foregroundServiceType on its services. In Android 14+, starting a foreground service without a valid type throws a MissingForegroundServiceTypeException at runtime.",
+      });
+    }
+  }
+
+  // Target SDK Google Play Warning
+  if (manifest.targetSdk) {
+    const targetSdkInt = parseInt(manifest.targetSdk, 10);
+    if (!isNaN(targetSdkInt) && targetSdkInt < 34) {
+      findings.push({
+        severity: "medium",
+        title: `Target SDK Outdated (API ${manifest.targetSdk})`,
+        evidence: `Application targets Android API ${manifest.targetSdk}. Google Play requires new apps and updates to target Android 14 (API 34) or higher.`,
+      });
+    }
   }
 
   // Extract deep links and URI schemes
@@ -420,6 +461,13 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
 
   // Append Native ELF Library Hardening Findings
   for (const lib of nativeLibraries) {
+    if (!lib.hardening.is16KbAligned && lib.is64Bit) {
+      findings.push({
+        severity: "high",
+        title: `Native Binary: 16 KB Page Alignment Failure (Android 15+) in ${lib.name}`,
+        evidence: `Binary ${lib.path} (${lib.architecture}) has maximum PT_LOAD segment alignment of ${lib.hardening.maxLoadAlignment} bytes (requires >= 16384 bytes). Google Play requires 16 KB page alignment for Android 15 (API 35+); binary will crash on 16 KB kernel devices.`,
+      });
+    }
     if (!lib.hardening.hasStackCanary && lib.size > 20480) {
       findings.push({
         severity: "medium",
@@ -441,6 +489,69 @@ export async function analyzeAPK(file: File): Promise<APKAnalysis> {
         evidence: `Binary ${lib.path} hardcodes dynamic search paths (${lib.hardening.rpathEntries.join(", ")}), risking DLL hijacking.`,
       });
     }
+  }
+
+  // FileProvider Path Traversal Audit
+  const fileProviderXmls = names.filter(n => /res\/xml\/.*(?:path|file).*\.xml$/i.test(n));
+  for (const fpx of fileProviderXmls) {
+    try {
+      const xmlBytes = await zip.files[fpx].async("uint8array");
+      const xmlContent = isBinaryAxml(xmlBytes) ? decodeAxml(xmlBytes).xml : decodeBytes(xmlBytes);
+      if (/<root-path/i.test(xmlContent)) {
+        findings.push({
+          severity: "critical",
+          title: `Insecure FileProvider Configuration (<root-path> in ${fpx.split("/").pop()})`,
+          evidence: `FileProvider config ${fpx} contains <root-path>, exposing the entire device root filesystem to external applications via content:// URIs.`,
+        });
+      }
+    } catch {}
+  }
+
+  // Content Provider / SQLite SQL Injection Heuristic
+  if (allCollectedStrings.some(s => /rawQuery\s*\(\s*["']SELECT[^\?]*\+/i.test(s) || /execSQL\s*\(\s*["'](?:SELECT|INSERT|UPDATE|DELETE)[^\?]*\+/i.test(s))) {
+    findings.push({
+      severity: "high",
+      title: "Potential SQL Injection in Content Provider / SQLite Database",
+      evidence: "Dynamic string concatenation detected in rawQuery() or execSQL() queries without parameterized bindings ('?').",
+    });
+  }
+
+  // ProGuard / R8 Obfuscation Analysis
+  const allDexClasses = dexFiles.flatMap(d => d.classes ?? []);
+  if (allDexClasses.length > 50) {
+    const obfuscatedClasses = allDexClasses.filter(c => {
+      const parts = c.split(".");
+      return parts.length >= 2 && parts[parts.length - 1].length <= 2;
+    });
+    const obfRatio = obfuscatedClasses.length / allDexClasses.length;
+    if (obfRatio >= 0.25) {
+      technologies.add("ProGuard / R8 Obfuscation");
+    } else {
+      findings.push({
+        severity: "low",
+        title: "Application Bytecode is Not Obfuscated",
+        evidence: `Only ${(obfRatio * 100).toFixed(1)}% of class identifiers appear minified. Classes, methods, and field names can be decompiled into original source code.`,
+      });
+    }
+  }
+
+  // Anti-Root & Tamper Detection Fingerprinting
+  const sampleStrings = allCollectedStrings.slice(0, 3000).join(" ");
+  if (/com\.scottyab\.rootbeer/i.test(sampleStrings) || allDexClasses.some(c => c.includes("rootbeer"))) {
+    technologies.add("RootBeer Anti-Root");
+  }
+  if (/PlayIntegrity/i.test(sampleStrings) || /play\.core\.integrity/i.test(sampleStrings)) {
+    technologies.add("Google Play Integrity");
+  }
+  if (/safetynet/i.test(sampleStrings)) {
+    technologies.add("SafetyNet Attestation");
+  }
+  if (/(\/system\/bin\/su|\/sbin\/su|eu\.chainfire\.supersu|com\.topjohnwu\.magisk)/i.test(sampleStrings)) {
+    findings.push({
+      severity: "info",
+      title: "Root & Su Binary Checks Detected in Code",
+      evidence: "Bytecode contains references to su binaries, Magisk, or SuperSU paths for local privilege detection.",
+    });
   }
 
   // Append SAST Secret Findings

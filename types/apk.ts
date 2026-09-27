@@ -46,7 +46,7 @@ export type APKAnalysis = {
   activities: { name: string; exported: string | null }[];
   services: { name: string; exported: string | null }[];
   receivers: { name: string; exported: string | null }[];
-  providers: { name: string; exported: string | null }[];
+  providers: { name: string; exported: string | null; authorities?: string | null }[];
   deepLinks: DeepLinkInfo[];
   urls: string[];
   domains: string[];

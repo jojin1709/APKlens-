@@ -21,14 +21,14 @@ export function generateSarif(analysis: APKAnalysis): string {
               shortDescription: { text: f.title },
               fullDescription: { text: f.evidence },
               defaultConfiguration: {
-                level: f.severity === "high" ? "error" : f.severity === "medium" ? "warning" : "note"
+                level: (f.severity === "critical" || f.severity === "high") ? "error" : f.severity === "medium" ? "warning" : "note"
               }
             }))
           }
         },
         results: analysis.findings.map((f, i) => ({
           ruleId: `APKLENS-${(i + 1).toString().padStart(3, "0")}`,
-          level: f.severity === "high" ? "error" : f.severity === "medium" ? "warning" : "note",
+          level: (f.severity === "critical" || f.severity === "high") ? "error" : f.severity === "medium" ? "warning" : "note",
           message: {
             text: `${f.title}: ${f.evidence}`
           },

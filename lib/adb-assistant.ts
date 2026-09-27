@@ -6,7 +6,7 @@
 export interface ComponentRef {
   name: string;
   exported: string | boolean | null;
-  authorities?: string;
+  authorities?: string | null;
 }
 
 export interface AdbCommandItem {
